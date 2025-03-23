@@ -1,13 +1,9 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
-import { Image, StyleSheet } from "react-native";
 import HomeScreen from "../screens/HomeScreen";
 import MenuSelectionScreen from "../screens/MenuSelectionScreen";
 import OrderSummaryScreen from "../screens/OrderSummaryScreen";
 import PaymentScreen from "../screens/PaymentScreen";
-
-// require ile yerel ikon
-const arrowIcon = require("../assets/arrow.png");
 
 export interface Meal {
   id: string;
@@ -17,7 +13,7 @@ export interface Meal {
 
 export type RootStackParamList = {
   Home: undefined;
-  MenuSelection: undefined;
+  MenuSelection: { orderType: "weekly" | "daily" };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
     selectedMeals: Meal[];
@@ -28,12 +24,14 @@ export type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
-  const backgroundColor = "#E3F2FD";   // Uygulamanın arka planı + header arka plan
-  const accentColor = "#64b5f6";       // Geri ikonunun ve butonların rengi
+  // Define colors for light theme
+  const backgroundColor = "#E3F2FD";
+  const accentColor = "#64b5f6";
 
   return (
     <Stack.Navigator
       screenOptions={{
+        headerShown: false,
         headerStyle: { backgroundColor },
         headerTintColor: accentColor,
         headerTitleStyle: {
@@ -41,13 +39,6 @@ export default function AppNavigator() {
           fontWeight: "bold",
         },
         headerBackTitle: "",
-        headerBackImage: () => (
-          <Image
-            source={arrowIcon}
-            style={[styles.arrow, { tintColor: accentColor }]}
-            resizeMode="contain"
-          />
-        ),
       }}
     >
       <Stack.Screen
@@ -73,11 +64,3 @@ export default function AppNavigator() {
     </Stack.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  arrow: {
-    width: 24,
-    height: 24,
-    marginLeft: 15,
-  },
-});

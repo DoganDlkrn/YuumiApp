@@ -1,9 +1,18 @@
 // src/screens/PaymentScreen.tsx
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Alert
+} from "react-native";
 import { useRoute, RouteProp, useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
+// 1) Dark mode için context
+import { useTheme } from "../context/ThemeContext";
 
 interface Meal {
   id: string;
@@ -19,6 +28,11 @@ export default function PaymentScreen() {
   const navigation = useNavigation<PaymentNavProp>();
 
   const { selectedMeals, planType } = route.params;
+
+  // 2) Temayı al
+  const { theme } = useTheme();
+  // 3) Koşullu style seçimi
+  const styles = theme === "dark" ? darkStyles : lightStyles;
 
   const totalPrice = useMemo(() => {
     let sum = selectedMeals.reduce((acc: number, meal: Meal) => acc + meal.price, 0);
@@ -36,7 +50,6 @@ export default function PaymentScreen() {
     Alert.alert("Ödeme İşlemi", `Ödeme alındı. Tutar: ${totalPrice.toFixed(2)} ₺`);
   };
 
-  // Her öğe 'Meal' tipinde
   const renderMealItem = ({ item }: { item: Meal }) => {
     return (
       <View style={styles.mealItem}>
@@ -73,7 +86,8 @@ export default function PaymentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// 4) Light ve Dark için ayrı StyleSheet'ler
+const lightStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#E3F2FD",
@@ -117,6 +131,60 @@ const styles = StyleSheet.create({
   payButton: {
     marginTop: 30,
     backgroundColor: "#64b5f6",
+    padding: 15,
+    alignItems: "center",
+    borderRadius: 25,
+  },
+  payButtonText: {
+    color: "#fff",
+    fontSize: 18,
+  },
+});
+
+const darkStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#121212",
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 10,
+  },
+  planInfo: {
+    fontSize: 16,
+    color: "#bbb",
+  },
+  mealItem: {
+    flexDirection: "row",
+    backgroundColor: "#333",
+    padding: 15,
+    borderRadius: 8,
+    marginVertical: 5,
+    justifyContent: "space-between",
+  },
+  mealName: {
+    fontSize: 18,
+    color: "#fff",
+  },
+  mealPrice: {
+    fontSize: 18,
+    color: "#fff",
+  },
+  totalContainer: {
+    marginTop: 20,
+    alignItems: "flex-end",
+  },
+  totalText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#fff",
+  },
+  payButton: {
+    marginTop: 30,
+    backgroundColor: "#1e88e5",
     padding: 15,
     alignItems: "center",
     borderRadius: 25,

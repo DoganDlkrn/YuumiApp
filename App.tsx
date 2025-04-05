@@ -1,13 +1,15 @@
 // App.tsx
 import React, { useState, useEffect } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
-import { SafeAreaView, StyleSheet, StatusBar, View, Image } from "react-native";
+import { StyleSheet, StatusBar, View, Image } from "react-native";
+import { SafeAreaView, SafeAreaProvider } from "react-native-safe-area-context";
 import AppNavigator from "./src/navigation/AppNavigation";
 
 function ThemedNavigationContainer() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Splash screen for 1.5 seconds
     setTimeout(() => {
       setIsLoading(false);
     }, 1500); 
@@ -25,16 +27,18 @@ function ThemedNavigationContainer() {
   }
 
   return (
-    <NavigationContainer theme={DefaultTheme}>
-      <StatusBar
-        barStyle="light-content"
-        backgroundColor="#00B2FF"
-        translucent={true}
-      />
-      <SafeAreaView style={[styles.container, {backgroundColor: '#00B2FF'}]}>
-        <AppNavigator />
-      </SafeAreaView>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer theme={DefaultTheme}>
+        <StatusBar
+          barStyle="light-content"
+          backgroundColor="#00B2FF"
+          translucent={false}
+        />
+        <View style={styles.container}>
+          <AppNavigator />
+        </View>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

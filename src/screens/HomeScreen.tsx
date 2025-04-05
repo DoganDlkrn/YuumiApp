@@ -5,12 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  SafeAreaView,
   Platform,
   ScrollView,
   TextInput,
   Image
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
@@ -44,7 +44,7 @@ export default function HomeScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}> {/* SafeAreaView buraya taşındı */}
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor="#00B2FF" />
 
       {/* Blue Header Section */}
@@ -59,7 +59,7 @@ export default function HomeScreen() {
             <Image source={locationIcon} style={styles.locationIcon} />
             <Text style={styles.locationText}>Konum Seç</Text>
             <Text style={styles.locationArrow}>▼</Text>
-      </TouchableOpacity>
+          </TouchableOpacity>
 
           <TouchableOpacity style={styles.cartButton}>
             <Image source={cartIcon} style={styles.cartIcon} />
@@ -162,21 +162,38 @@ export default function HomeScreen() {
       {/* Bottom Tab Bar */}
       <View style={styles.bottomTabBar}>
         <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
-          <Image source={restaurantIcon} style={[styles.tabIcon, styles.activeTabIcon]} resizeMode="contain" />
+          <View style={styles.iconBackground}>
+            <Image source={restaurantIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
+          </View>
+          <View style={styles.bubbleIndicator}>
+            <View style={styles.bubbleInner} />
+          </View>
           <Text style={[styles.tabLabel, styles.activeTabLabel]}>Yemek</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Image source={searchIcon} style={styles.tabIcon} resizeMode="contain" />
+        
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('Search')}
+        >
+          <Image source={searchIcon} style={styles.tabIcon} />
           <Text style={styles.tabLabel}>Arama</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Image source={orderIcon} style={styles.tabIcon} resizeMode="contain" />
+        
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('Orders')}
+        >
+          <Image source={orderIcon} style={styles.tabIcon} />
           <Text style={styles.tabLabel}>Siparişlerim</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.tabItem}>
-          <Image source={userIcon} style={styles.tabIcon} resizeMode="contain" />
+        
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <Image source={userIcon} style={styles.tabIcon} />
           <Text style={styles.tabLabel}>Profilim</Text>
-      </TouchableOpacity>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -189,14 +206,15 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: '#00B2FF',
+    paddingBottom: 10,
   },
   topNavBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: Platform.OS === 'ios' ? 5 : 10,
+    paddingBottom: 5,
   },
   menuButton: {
     width: 44,
@@ -211,9 +229,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 20,
   },
-  navIcon: {
-    width: 24,
-    height: 24,
+  menuIcon: {
+    width: 32,
+    height: 32,
+    tintColor: 'white',
+  },
+  cartIcon: {
+    width: 32,
+    height: 32,
+    tintColor: 'white',
   },
   locationContainer: {
     flexDirection: 'row',
@@ -263,8 +287,8 @@ const styles = StyleSheet.create({
   },
   toggleContainer: {
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 15,
+    marginTop: 15,
+    marginBottom: 10,
   },
   toggleWrapper: {
     flexDirection: 'row',
@@ -335,6 +359,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+    paddingTop: 5,
   },
   categoriesContainer: {
     marginTop: 15,
@@ -401,7 +426,7 @@ const styles = StyleSheet.create({
     color: '#777',
   },
   bottomSpacing: {
-    height: Platform.OS === 'ios' ? 90 : 60, // Match bottomTabBar height
+    height: Platform.OS === 'ios' ? 85 : 70,
   },
   bottomTabBar: {
     flexDirection: 'row',
@@ -412,44 +437,66 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    paddingTop: 10,
+    paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-    height: Platform.OS === 'ios' ? 85 : 60,
+    height: Platform.OS === 'ios' ? 75 : 60,
   },
   tabItem: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 15 : 0,
+    justifyContent: 'center',
+    position: 'relative',
   },
   activeTabItem: {
-    backgroundColor: 'transparent',
-    borderTopWidth: 0,
+    position: 'relative',
   },
   tabIcon: {
-    width: 28,
-    height: 28,
-    marginBottom: 4,
+    width: 24,
+    height: 24,
+    tintColor: '#777',
+    marginBottom: 3,
   },
   tabLabel: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#777',
   },
   activeTabIcon: {
-    tintColor: '#00B2FF',
+    tintColor: 'white',
   },
   activeTabLabel: {
     color: '#00B2FF',
-    fontWeight: 'bold',
+    fontWeight: '500',
   },
-  menuIcon: {
-    width: 32,
-    height: 32,
-    tintColor: 'white',
+  bubbleIndicator: {
+    position: 'absolute',
+    top: -3,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#00B2FF',
+    alignSelf: 'center',
   },
-  cartIcon: {
-    width: 32,
-    height: 32,
-    tintColor: 'white',
+  bubbleInner: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: 'white',
+    position: 'absolute',
+    top: 1.5,
+    left: 1.5,
+  },
+  iconBackground: {
+    backgroundColor: '#00B2FF',
+    borderRadius: 50,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
+    shadowColor: '#00B2FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
 });

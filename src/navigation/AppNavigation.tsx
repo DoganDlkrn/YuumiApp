@@ -1,9 +1,14 @@
 import React from "react";
 import { createStackNavigator } from "@react-navigation/stack";
+import { CardStyleInterpolators } from '@react-navigation/stack';
 import HomeScreen from "../screens/HomeScreen";
 import MenuSelectionScreen from "../screens/MenuSelectionScreen";
 import OrderSummaryScreen from "../screens/OrderSummaryScreen";
 import PaymentScreen from "../screens/PaymentScreen";
+import LoginScreen from "../screens/LoginScreen";
+import SearchScreen from "../screens/SearchScreen";
+import OrdersScreen from "../screens/OrdersScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 export interface Meal {
   id: string;
@@ -12,7 +17,11 @@ export interface Meal {
 }
 
 export type RootStackParamList = {
+  Login: undefined;
   Home: undefined;
+  Search: undefined;
+  Orders: undefined;
+  Profile: undefined;
   MenuSelection: { orderType: "weekly" | "daily" };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
@@ -30,6 +39,7 @@ export default function AppNavigator() {
 
   return (
     <Stack.Navigator
+      initialRouteName="Login"
       screenOptions={{
         headerShown: false,
         headerStyle: { backgroundColor },
@@ -39,12 +49,33 @@ export default function AppNavigator() {
           fontWeight: "bold",
         },
         headerBackTitle: "",
+        cardStyleInterpolator: CardStyleInterpolators.forNoAnimation,
       }}
     >
+      <Stack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ title: "Giriş Yap" }}
+      />
       <Stack.Screen
         name="Home"
         component={HomeScreen}
         options={{ title: "SmartMeal" }}
+      />
+      <Stack.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{ title: "Arama" }}
+      />
+      <Stack.Screen
+        name="Orders"
+        component={OrdersScreen}
+        options={{ title: "Siparişlerim" }}
+      />
+      <Stack.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: "Profilim" }}
       />
       <Stack.Screen
         name="MenuSelection"

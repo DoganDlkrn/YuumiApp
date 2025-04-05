@@ -20,8 +20,8 @@ import { RootStackParamList } from '../navigation/AppNavigation';
 
 // App logo
 const appLogo = require('../assets/Y.png');
-// We'll use text for Google instead of the icon since the PNG file is missing
-// const googleIcon = require('../assets/google-icon.png');
+// Google icon
+const googleIcon = require('../assets/google.png');
 
 type LoginScreenNavProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -172,9 +172,7 @@ const LoginScreen = () => {
               style={styles.googleButton}
               onPress={handleGoogleLogin}
             >
-              <View style={styles.googleIconContainer}>
-                <Text style={styles.googleIconText}>G</Text>
-              </View>
+              <Image source={googleIcon} style={styles.googleIcon} />
               <Text style={styles.googleButtonText}>Google ile devam et</Text>
             </TouchableOpacity>
           </View>
@@ -318,19 +316,10 @@ const styles = StyleSheet.create({
     shadowRadius: 1.5,
     elevation: 2,
   },
-  googleIconContainer: {
+  googleIcon: {
     width: 24,
     height: 24,
-    borderRadius: 12,
-    backgroundColor: '#00B2FF',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 10,
-  },
-  googleIconText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
   },
   googleButtonText: {
     fontSize: 16,

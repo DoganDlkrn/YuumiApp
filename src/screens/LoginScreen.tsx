@@ -101,12 +101,7 @@ const LoginScreen = () => {
 
   const toggleView = () => {
     setIsLoginView(!isLoginView);
-    // Reset fields when toggling views
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
-    setName('');
-    setPhoneNumber('');
+    // Form alanlarını sakla, sıfırlama
   };
 
   return (

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
 import HomeScreen from "../screens/HomeScreen";
 import MenuSelectionScreen from "../screens/MenuSelectionScreen";
@@ -8,6 +8,8 @@ import LoginScreen from "../screens/LoginScreen";
 import SearchScreen from "../screens/SearchScreen";
 import OrdersScreen from "../screens/OrdersScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import LanguageScreen from "../screens/LanguageScreen";
+import { useLanguage } from "../context/LanguageContext";
 
 export interface Meal {
   id: string;
@@ -21,6 +23,7 @@ export type RootStackParamList = {
   Search: undefined;
   Orders: undefined;
   Profile: undefined;
+  Language: undefined;
   MenuSelection: { orderType: "weekly" | "daily" };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
@@ -31,10 +34,31 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator();
 
+const defaultTranslations = {
+  'login.title': 'Giriş Yap',
+  'tabs.search': 'Arama',
+  'tabs.orders': 'Siparişlerim',
+  'profile.title': 'Profilim',
+  'profile.language': 'Dil Seçenekleri'
+};
+
 export default function AppNavigator() {
   // Define theme colors
   const primaryBlue = "#00B2FF";
   const headerTextColor = "white";
+  
+  // Safely get the translation function with a fallback
+  let t: (key: string) => string;
+  
+  try {
+    // Use the language context if available
+    const languageContext = useLanguage();
+    t = languageContext.t;
+  } catch (error) {
+    // Fallback function if context is not available
+    console.warn("Language context not available, using fallbacks:", error);
+    t = (key: string) => defaultTranslations[key as keyof typeof defaultTranslations] || key;
+  }
 
   return (
     <Stack.Navigator
@@ -75,7 +99,7 @@ export default function AppNavigator() {
         name="Login"
         component={LoginScreen}
         options={{ 
-          title: "Giriş Yap",
+          title: t('login.title'),
           animationEnabled: false,
         }}
       />
@@ -91,7 +115,7 @@ export default function AppNavigator() {
         name="Search"
         component={SearchScreen}
         options={{ 
-          title: "Arama",
+          title: t('tabs.search'),
           animationEnabled: false,
         }}
       />
@@ -99,7 +123,7 @@ export default function AppNavigator() {
         name="Orders"
         component={OrdersScreen}
         options={{ 
-          title: "Siparişlerim",
+          title: t('tabs.orders'),
           animationEnabled: false,
         }}
       />
@@ -107,8 +131,16 @@ export default function AppNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{ 
-          title: "Profilim",
+          title: t('profile.title'),
           animationEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="Language"
+        component={LanguageScreen}
+        options={{ 
+          title: t('profile.language'),
+          animationEnabled: true,
         }}
       />
       <Stack.Screen

@@ -80,6 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       await setDoc(doc(db, 'users', userCredential.user.uid), userProfile);
       
+      // Profil bilgisini hemen güncelle
+      setProfile(userProfile);
       setLoading(false);
     } catch (error: any) {
       setLoading(false);

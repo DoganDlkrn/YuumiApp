@@ -4,9 +4,9 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// Firebase konfigürasyonu - API key'i tırnak içinde doğru formatta yazalım
+// Firebase konfigürasyonu
 const firebaseConfig = {
-  apiKey: "AIzaSyBzNJUPs-h1VxX4wWlM0SeWgQTZqjx9W0E", // API key'in tırnak içinde olduğundan emin olalım
+  apiKey: "AIzaSyBzNJUPs-h1VxX4wWlM0SeWgQTZqjx9WOE", 
   authDomain: "yuumi-4606b.firebaseapp.com",
   projectId: "yuumi-4606b",
   storageBucket: "yuumi-4606b.appspot.com",

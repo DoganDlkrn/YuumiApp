@@ -6,17 +6,18 @@ import {
   TextInput, 
   TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
   Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 export default function RegisterScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { register, loading } = useAuth();
+  const [isRegistering, setIsRegistering] = useState(false);
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -42,18 +43,14 @@ export default function RegisterScreen() {
     }
 
     try {
+      setIsRegistering(true);
       await register(email, password, displayName, phoneNumber);
-      Alert.alert(
-        'Kayıt Başarılı', 
-        'Hesabınız başarıyla oluşturuldu. Şimdi giriş yapabilirsiniz.',
-        [
-          { 
-            text: 'Tamam', 
-            onPress: () => navigation.navigate('Login' as never)
-          }
-        ]
-      );
+      
+      // Kayıt başarılı olduğunda direkt olarak login ekranına yönlendir
+      navigation.navigate('Login' as never);
+      setIsRegistering(false);
     } catch (error) {
+      setIsRegistering(false);
       // Hata AuthContext'te zaten işleniyor
       console.log('Kayıt işlemi başarısız:', error);
     }
@@ -61,6 +58,8 @@ export default function RegisterScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      <LoadingOverlay visible={isRegistering} message="Kayıt oluşturuluyor" />
+      
       <Text style={styles.title}>Hesap Oluştur</Text>
       
       <View style={styles.inputContainer}>
@@ -132,13 +131,9 @@ export default function RegisterScreen() {
       <TouchableOpacity 
         style={styles.registerButton}
         onPress={handleRegister}
-        disabled={loading}
+        disabled={loading || isRegistering}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.registerButtonText}>Kayıt Ol</Text>
-        )}
+        <Text style={styles.registerButtonText}>Kayıt Ol</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 

@@ -17,6 +17,7 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../context/LanguageContext";
 
 // Import images
 const searchIcon: ImageSourcePropType = require('../assets/search-interface-symbol.png');
@@ -30,30 +31,32 @@ export default function ProfileScreen() {
   const navigation = useNavigation() as ProfileScreenNavProp;
   const { user, profile, logout } = useAuth();
   const { theme } = useTheme();
+  const { t, getCurrentLanguage } = useLanguage();
   
   const styles = theme === 'dark' ? darkStyles : lightStyles;
+  const currentLanguage = getCurrentLanguage();
 
   const settingsSections = [
     {
-      title: 'Hesap',
+      title: t('profile.account'),
       items: [
-        { title: 'Profil Bilgileri', screen: 'EditProfile' },
-        { title: 'Adreslerim', screen: 'Addresses' },
-        { title: 'Ödeme Yöntemlerim', screen: 'PaymentMethods' },
+        { title: t('profile.profileInfo'), screen: 'EditProfile' },
+        { title: t('profile.addresses'), screen: 'Addresses' },
+        { title: t('profile.paymentMethods'), screen: 'PaymentMethods' },
       ]
     },
     {
-      title: 'Tercihler',
+      title: t('profile.preferences'),
       items: [
-        { title: 'Bildirim Ayarları', screen: 'Notifications' },
-        { title: 'Dil Seçenekleri', screen: 'Language' },
+        { title: t('profile.notifications'), screen: 'Notifications' },
+        { title: t('profile.language'), screen: 'Language', badge: currentLanguage.flag },
       ]
     },
     {
-      title: 'Diğer',
+      title: t('profile.other'),
       items: [
-        { title: 'Yardım & Destek', screen: 'Support' },
-        { title: 'Çıkış Yap', screen: 'Logout', isLogout: true },
+        { title: t('profile.support'), screen: 'Support' },
+        { title: t('profile.logout'), screen: 'Logout', isLogout: true },
       ]
     }
   ];
@@ -73,7 +76,7 @@ export default function ProfileScreen() {
 
       {/* Blue Header Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>Profilim</Text>
+        <Text style={styles.headerTitle}>{t('profile.title')}</Text>
       </View>
 
       {/* White Content Section */}
@@ -82,9 +85,9 @@ export default function ProfileScreen() {
           {/* Profile Summary */}
           <View style={styles.profileSummary}>
             <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{profile?.displayName || 'İsimsiz Kullanıcı'}</Text>
-              <Text style={styles.profileEmail}>{profile?.email || user?.email || 'E-posta yok'}</Text>
-              <Text style={styles.profilePhone}>{profile?.phoneNumber || 'Telefon yok'}</Text>
+              <Text style={styles.profileName}>{profile?.displayName || user?.displayName || t('anonymous')}</Text>
+              <Text style={styles.profileEmail}>{profile?.email || user?.email || t('no.email')}</Text>
+              <Text style={styles.profilePhone}>{profile?.phoneNumber || t('no.phone')}</Text>
             </View>
           </View>
 
@@ -104,21 +107,21 @@ export default function ProfileScreen() {
                     onPress={() => {
                       if (item.screen === 'Logout') {
                         Alert.alert(
-                          'Çıkış Yap',
-                          'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+                          t('logout.title'),
+                          t('logout.confirm'),
                           [
                             {
-                              text: 'İptal',
+                              text: t('cancel'),
                               style: 'cancel'
                             },
                             {
-                              text: 'Çıkış Yap',
+                              text: t('profile.logout'),
                               onPress: handleLogout
                             }
                           ]
                         );
                       } else {
-                        console.log(`Navigate to ${item.screen}`);
+                        navigation.navigate(item.screen as never);
                       }
                     }}
                   >
@@ -128,6 +131,10 @@ export default function ProfileScreen() {
                     ]}>
                       {item.title}
                     </Text>
+                    
+                    {item.badge && (
+                      <Text style={styles.settingsBadge}>{item.badge}</Text>
+                    )}
                     
                     {!item.isLogout && (
                       <Text style={styles.settingsItemArrow}>›</Text>
@@ -155,7 +162,7 @@ export default function ProfileScreen() {
           onPress={() => navigation.navigate('Home' as never)}
         >
           <Image source={restaurantIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Yemek</Text>
+          <Text style={styles.tabLabel}>{t('tabs.food')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -163,7 +170,7 @@ export default function ProfileScreen() {
           onPress={() => navigation.navigate('Search' as never)}
         >
           <Image source={searchIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Arama</Text>
+          <Text style={styles.tabLabel}>{t('tabs.search')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -171,12 +178,12 @@ export default function ProfileScreen() {
           onPress={() => navigation.navigate('Orders' as never)}
         >
           <Image source={orderIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Siparişlerim</Text>
+          <Text style={styles.tabLabel}>{t('tabs.orders')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
           <Image source={userIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>Profilim</Text>
+          <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.profile')}</Text>
           <View style={styles.activeIndicator} />
         </TouchableOpacity>
       </View>
@@ -256,7 +263,7 @@ const lightStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 15,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -264,17 +271,22 @@ const lightStyles = StyleSheet.create({
   settingsItemTitle: {
     fontSize: 15,
     color: '#333',
+    flex: 1,
+  },
+  settingsItemArrow: {
+    color: '#bbb',
+    fontSize: 22,
+    marginLeft: 8,
+  },
+  settingsBadge: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  logoutItem: {
+    marginTop: 20,
   },
   logoutText: {
     color: '#f44336',
-    fontWeight: '500',
-  },
-  settingsItemArrow: {
-    fontSize: 20,
-    color: '#aaa',
-  },
-  logoutItem: {
-    marginTop: 5,
   },
   versionContainer: {
     alignItems: 'center',
@@ -283,60 +295,62 @@ const lightStyles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: '#999',
+    color: '#aaa',
   },
   bottomSpacing: {
-    height: Platform.OS === 'ios' ? 80 : 60,
+    height: 100,
   },
   bottomTabBar: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
     width: '100%',
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-    height: Platform.OS === 'ios' ? 80 : 60,
     backgroundColor: 'white',
     flexDirection: 'row',
+    height: 70,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#eee',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 5,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    padding: 10,
+  },
+  activeTabItem: {
+    position: 'relative',
   },
   tabIcon: {
     width: 22,
     height: 22,
-    tintColor: '#9E9E9E',
-  },
-  tabLabel: {
-    fontSize: 10,
-    color: '#9E9E9E',
-    marginTop: 3,
-  },
-  activeTabItem: {
-    backgroundColor: 'white',
+    tintColor: '#aaa',
+    marginBottom: 5,
   },
   activeTabIcon: {
     tintColor: '#00B2FF',
   },
+  tabLabel: {
+    fontSize: 12,
+    color: '#aaa',
+  },
   activeTabLabel: {
     color: '#00B2FF',
+    fontWeight: 'bold',
   },
   activeIndicator: {
     position: 'absolute',
-    bottom: 2,
+    bottom: 0,
     width: 40,
     height: 3,
     backgroundColor: '#00B2FF',
-    alignSelf: 'center',
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-  },
+    borderTopLeftRadius: 1.5,
+    borderTopRightRadius: 1.5,
+  }
 });
 
 const darkStyles = StyleSheet.create({
@@ -373,7 +387,7 @@ const darkStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    borderBottomColor: '#222',
     marginBottom: 15,
   },
   profileInfo: {
@@ -382,17 +396,17 @@ const darkStyles = StyleSheet.create({
   profileName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#fff',
+    color: 'white',
     marginBottom: 4,
   },
   profileEmail: {
     fontSize: 14,
-    color: '#aaa',
+    color: '#bbb',
     marginBottom: 2,
   },
   profilePhone: {
     fontSize: 14,
-    color: '#aaa',
+    color: '#bbb',
   },
   settingsSection: {
     marginBottom: 15,
@@ -400,36 +414,41 @@ const darkStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#fff',
+    color: 'white',
     marginLeft: 16,
     marginBottom: 10,
   },
   settingsItemsContainer: {
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#1e1e1e',
   },
   settingsItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 15,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
   settingsItemTitle: {
     fontSize: 15,
-    color: '#fff',
+    color: 'white',
+    flex: 1,
+  },
+  settingsItemArrow: {
+    color: '#666',
+    fontSize: 22,
+    marginLeft: 8,
+  },
+  settingsBadge: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  logoutItem: {
+    marginTop: 20,
   },
   logoutText: {
     color: '#f44336',
-    fontWeight: '500',
-  },
-  settingsItemArrow: {
-    fontSize: 20,
-    color: '#777',
-  },
-  logoutItem: {
-    marginTop: 5,
   },
   versionContainer: {
     alignItems: 'center',
@@ -438,58 +457,60 @@ const darkStyles = StyleSheet.create({
   },
   versionText: {
     fontSize: 12,
-    color: '#777',
+    color: '#666',
   },
   bottomSpacing: {
-    height: Platform.OS === 'ios' ? 80 : 60,
+    height: 100,
   },
   bottomTabBar: {
     position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
     width: '100%',
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-    height: Platform.OS === 'ios' ? 80 : 60,
     backgroundColor: '#1a1a1a',
     flexDirection: 'row',
+    height: 70,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
     borderTopWidth: 1,
     borderTopColor: '#333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 10,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    padding: 10,
+  },
+  activeTabItem: {
+    position: 'relative',
   },
   tabIcon: {
     width: 22,
     height: 22,
     tintColor: '#777',
-  },
-  tabLabel: {
-    fontSize: 10,
-    color: '#777',
-    marginTop: 3,
-  },
-  activeTabItem: {
-    backgroundColor: '#1a1a1a',
+    marginBottom: 5,
   },
   activeTabIcon: {
     tintColor: '#1e88e5',
   },
+  tabLabel: {
+    fontSize: 12,
+    color: '#777',
+  },
   activeTabLabel: {
     color: '#1e88e5',
+    fontWeight: 'bold',
   },
   activeIndicator: {
     position: 'absolute',
-    bottom: 2,
+    bottom: 0,
     width: 40,
     height: 3,
     backgroundColor: '#1e88e5',
-    alignSelf: 'center',
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-  },
+    borderTopLeftRadius: 1.5,
+    borderTopRightRadius: 1.5,
+  }
 }); 

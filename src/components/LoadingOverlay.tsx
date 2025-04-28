@@ -4,14 +4,34 @@ import YLogo from './YLogo';
 
 interface LoadingOverlayProps {
   visible: boolean;
+  message?: string;
 }
 
-const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ visible }) => {
+const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ 
+  visible, 
+  message = 'Yükleniyor'
+}) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const dotsAnim = useRef(new Animated.Value(0)).current;
   const [isHidden, setIsHidden] = useState(!visible);
+  const [dots, setDots] = useState('');
+
+  useEffect(() => {
+    // Control dots animation
+    const interval = setInterval(() => {
+      setDots(prev => {
+        if (prev === '') return '.';
+        if (prev === '.') return '..';
+        if (prev === '..') return '...';
+        return '';
+      });
+    }, 400);
+
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (visible) {
@@ -63,7 +83,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ visible }) => {
       // Fade out when not visible
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 150,
         useNativeDriver: true,
         easing: Easing.in(Easing.cubic),
       }).start(({ finished }) => {
@@ -86,10 +106,12 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ visible }) => {
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <Animated.View style={[styles.logoContainer, { transform: [{ scale: scaleAnim }] }]}>
+        {/* Logo and brand identity */}
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
           <YLogo size={80} color="#00B2FF" style={styles.logo} />
         </Animated.View>
         
+        {/* Animated dots */}
         <View style={styles.spinnerContainer}>
           <Animated.View 
             style={[
@@ -104,7 +126,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ visible }) => {
           </Animated.View>
         </View>
         
-        <Text style={styles.loadingText}>Yükleniyor</Text>
+        <Text style={styles.loadingText}>{message}{dots}</Text>
       </Animated.View>
     </Animated.View>
   );
@@ -115,16 +137,16 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     zIndex: 1000,
   },
   logoContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
-    width: 160,
-    height: 200,
-    borderRadius: 20,
+    width: 180,
+    height: 220,
+    borderRadius: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -148,16 +170,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: '#00B2FF',
     margin: 3,
   },
   loadingText: {
     color: '#00B2FF',
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 18,
+    fontWeight: '600',
     marginTop: 10,
   }
 });

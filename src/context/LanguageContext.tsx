@@ -23,7 +23,7 @@ const safeAsyncStorage = {
 };
 
 // Available languages
-export type LanguageCode = 'tr' | 'en' | 'fr' | 'de' | 'es';
+export type LanguageCode = 'tr' | 'en';
 
 interface Language {
   code: LanguageCode;
@@ -34,10 +34,7 @@ interface Language {
 
 export const LANGUAGES: Language[] = [
   { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' },
-  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' },
-  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' }
+  { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧' }
 ];
 
 // Translations organized by language code
@@ -136,150 +133,6 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'tabs.search': 'Search',
     'tabs.orders': 'My Orders',
     'tabs.profile': 'Profile',
-  },
-
-  fr: {
-    // Common
-    'app.name': 'Yuumi',
-    'loading': 'Chargement',
-    'cancel': 'Annuler',
-    'anonymous': 'Utilisateur Anonyme',
-    'no.email': 'Pas d\'email',
-    'no.phone': 'Pas de téléphone',
-    'logout.title': 'Déconnexion',
-    'logout.confirm': 'Êtes-vous sûr de vouloir vous déconnecter de votre compte?',
-
-    // Auth screens
-    'login.title': 'Connexion',
-    'login.email': 'E-mail',
-    'login.password': 'Mot de passe',
-    'login.button': 'Se connecter',
-    'login.register': "Pas de compte? S'inscrire",
-    'login.forgot': 'Mot de passe oublié',
-
-    'register.title': 'Créer un compte',
-    'register.name': 'Nom complet',
-    'register.email': 'E-mail',
-    'register.phone': 'Téléphone',
-    'register.password': 'Mot de passe',
-    'register.confirmPassword': 'Confirmer le mot de passe',
-    'register.button': "S'inscrire",
-    'register.login': 'Vous avez déjà un compte? Connectez-vous',
-
-    // Profile screen
-    'profile.title': 'Mon Profil',
-    'profile.account': 'Compte',
-    'profile.preferences': 'Préférences',
-    'profile.other': 'Autre',
-    'profile.profileInfo': 'Informations du profil',
-    'profile.addresses': 'Mes adresses',
-    'profile.paymentMethods': 'Moyens de paiement',
-    'profile.notifications': 'Paramètres de notification',
-    'profile.language': 'Options de langue',
-    'profile.support': 'Aide et support',
-    'profile.logout': 'Déconnexion',
-
-    // Bottom tabs
-    'tabs.food': 'Nourriture',
-    'tabs.search': 'Recherche',
-    'tabs.orders': 'Mes commandes',
-    'tabs.profile': 'Profil',
-  },
-
-  de: {
-    // Common
-    'app.name': 'Yuumi',
-    'loading': 'Wird geladen',
-    'cancel': 'Abbrechen',
-    'anonymous': 'Anonymer Benutzer',
-    'no.email': 'Keine E-Mail',
-    'no.phone': 'Kein Telefon',
-    'logout.title': 'Abmelden',
-    'logout.confirm': 'Sind Sie sicher, dass Sie sich von Ihrem Konto abmelden möchten?',
-
-    // Auth screens
-    'login.title': 'Anmelden',
-    'login.email': 'E-Mail',
-    'login.password': 'Passwort',
-    'login.button': 'Anmelden',
-    'login.register': 'Kein Konto? Registrieren',
-    'login.forgot': 'Passwort vergessen',
-
-    'register.title': 'Konto erstellen',
-    'register.name': 'Vollständiger Name',
-    'register.email': 'E-Mail',
-    'register.phone': 'Telefon',
-    'register.password': 'Passwort',
-    'register.confirmPassword': 'Passwort bestätigen',
-    'register.button': 'Registrieren',
-    'register.login': 'Haben Sie bereits ein Konto? Anmelden',
-
-    // Profile screen
-    'profile.title': 'Mein Profil',
-    'profile.account': 'Konto',
-    'profile.preferences': 'Einstellungen',
-    'profile.other': 'Sonstiges',
-    'profile.profileInfo': 'Profilinformationen',
-    'profile.addresses': 'Meine Adressen',
-    'profile.paymentMethods': 'Zahlungsmethoden',
-    'profile.notifications': 'Benachrichtigungseinstellungen',
-    'profile.language': 'Sprachoptionen',
-    'profile.support': 'Hilfe & Support',
-    'profile.logout': 'Abmelden',
-
-    // Bottom tabs
-    'tabs.food': 'Essen',
-    'tabs.search': 'Suche',
-    'tabs.orders': 'Meine Bestellungen',
-    'tabs.profile': 'Profil',
-  },
-
-  es: {
-    // Common
-    'app.name': 'Yuumi',
-    'loading': 'Cargando',
-    'cancel': 'Cancelar',
-    'anonymous': 'Usuario Anónimo',
-    'no.email': 'Sin correo',
-    'no.phone': 'Sin teléfono',
-    'logout.title': 'Cerrar sesión',
-    'logout.confirm': '¿Estás seguro de que quieres cerrar sesión en tu cuenta?',
-
-    // Auth screens
-    'login.title': 'Iniciar sesión',
-    'login.email': 'Correo electrónico',
-    'login.password': 'Contraseña',
-    'login.button': 'Iniciar sesión',
-    'login.register': '¿No tienes cuenta? Regístrate',
-    'login.forgot': 'Olvidé mi contraseña',
-
-    'register.title': 'Crear cuenta',
-    'register.name': 'Nombre completo',
-    'register.email': 'Correo electrónico',
-    'register.phone': 'Teléfono',
-    'register.password': 'Contraseña',
-    'register.confirmPassword': 'Confirmar contraseña',
-    'register.button': 'Registrarse',
-    'register.login': '¿Ya tienes una cuenta? Inicia sesión',
-
-    // Profile screen
-    'profile.title': 'Mi perfil',
-    'profile.account': 'Cuenta',
-    'profile.preferences': 'Preferencias',
-    'profile.other': 'Otros',
-    'profile.profileInfo': 'Información del perfil',
-    'profile.addresses': 'Mis direcciones',
-    'profile.paymentMethods': 'Métodos de pago',
-    'profile.notifications': 'Configuración de notificaciones',
-    'profile.language': 'Opciones de idioma',
-    'profile.support': 'Ayuda y soporte',
-    'profile.logout': 'Cerrar sesión',
-
-    // Bottom tabs
-    'tabs.food': 'Comida',
-    'tabs.search': 'Buscar',
-    'tabs.orders': 'Mis pedidos',
-    'tabs.profile': 'Perfil',
   },
 };
 

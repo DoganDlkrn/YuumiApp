@@ -6,8 +6,9 @@ import {
   TouchableOpacity, 
   FlatList, 
   StatusBar,
-  SafeAreaView
+  Platform
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage, LANGUAGES } from '../context/LanguageContext';
@@ -20,53 +21,55 @@ export default function LanguageScreen() {
   const styles = theme === 'dark' ? darkStyles : lightStyles;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor={theme === 'dark' ? "#1e88e5" : "#00B2FF"} />
       
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>{"←"}</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('profile.language')}</Text>
-        <View style={styles.placeholder} />
+      {/* Blue Header Section */}
+      <View style={styles.headerSection}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>{"←"}</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('profile.language')}</Text>
+          <View style={styles.placeholder} />
+        </View>
       </View>
       
-      {/* Language List */}
-      <FlatList
-        data={LANGUAGES}
-        keyExtractor={(item) => item.code}
-        renderItem={({ item }) => (
-          <TouchableOpacity 
-            style={[
-              styles.languageItem,
-              currentLanguage === item.code && styles.selectedLanguageItem
-            ]}
-            onPress={async () => {
-              await setLanguage(item.code);
-              navigation.goBack();
-            }}
-          >
-            <View style={styles.languageInfo}>
-              <Text style={styles.languageFlag}>{item.flag}</Text>
-              <View style={styles.languageTextContainer}>
-                <Text style={styles.languageName}>{item.nativeName}</Text>
-                <Text style={styles.languageNameEnglish}>{item.name}</Text>
+      {/* White Content Section */}
+      <View style={styles.whiteContainer}>
+        {/* Language List */}
+        <FlatList
+          data={LANGUAGES}
+          keyExtractor={(item) => item.code}
+          renderItem={({ item }) => (
+            <TouchableOpacity 
+              style={styles.languageItem}
+              onPress={async () => {
+                await setLanguage(item.code);
+                navigation.goBack();
+              }}
+            >
+              <View style={styles.languageInfo}>
+                <Text style={styles.languageFlag}>{item.flag}</Text>
+                <View style={styles.languageTextContainer}>
+                  <Text style={styles.languageName}>{item.nativeName}</Text>
+                  <Text style={styles.languageNameEnglish}>{item.name}</Text>
+                </View>
               </View>
-            </View>
-            
-            {currentLanguage === item.code && (
-              <View style={styles.checkmark}>
-                <Text style={styles.checkmarkText}>✓</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
-        contentContainerStyle={styles.listContent}
-      />
+              
+              {currentLanguage === item.code && (
+                <View style={styles.checkmark}>
+                  <Text style={styles.checkmarkText}>✓</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -74,17 +77,21 @@ export default function LanguageScreen() {
 const lightStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#00B2FF',
   },
-  header: {
+  headerSection: {
+    backgroundColor: '#00B2FF',
+    paddingBottom: 15,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 15,
-    backgroundColor: '#00B2FF',
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -98,8 +105,17 @@ const lightStyles = StyleSheet.create({
   placeholder: {
     width: 30,
   },
+  whiteContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    width: '100%',
+  },
   listContent: {
     padding: 15,
+    paddingTop: 10,
   },
   languageItem: {
     flexDirection: 'row',
@@ -152,17 +168,21 @@ const lightStyles = StyleSheet.create({
 const darkStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#1e88e5',
   },
-  header: {
+  headerSection: {
+    backgroundColor: '#1e88e5',
+    paddingBottom: 15,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 15,
-    backgroundColor: '#1e88e5',
+    paddingHorizontal: 15,
+    paddingTop: 10,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
   },
@@ -176,8 +196,17 @@ const darkStyles = StyleSheet.create({
   placeholder: {
     width: 30,
   },
+  whiteContainer: {
+    flex: 1,
+    backgroundColor: '#121212',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+    width: '100%',
+  },
   listContent: {
     padding: 15,
+    paddingTop: 10,
   },
   languageItem: {
     flexDirection: 'row',

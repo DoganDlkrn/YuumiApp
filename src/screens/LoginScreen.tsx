@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,9 +23,12 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigationLoading } from '../navigation/NavigationContainer';
 import YLogo from '../components/YLogo';
 import { useTheme } from '../context/ThemeContext';
+import PasswordToggle from '../components/PasswordToggle';
 
 // Google icon
 const googleIcon: ImageSourcePropType = require('../assets/images/google.png');
+// Turkish flag
+const turkishFlag: ImageSourcePropType = require('../assets/images/turkish_flag.png');
 
 type LoginScreenNavProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
@@ -38,8 +41,10 @@ const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   // Tutarlı placeholder rengi
   const placeholderColor = theme === 'dark' ? '#888' : '#999';
@@ -74,8 +79,8 @@ const LoginScreen = () => {
 
   const handleSignUp = async () => {
     // Validate input fields
-    if (!email || !password || !confirmPassword || !name) {
-      Alert.alert('Hata', 'Lütfen tüm alanları doldurun.');
+    if (!email || !password || !confirmPassword || !firstName || !lastName) {
+      Alert.alert('Hata', 'Lütfen tüm zorunlu alanları doldurun.');
       return;
     }
     
@@ -87,8 +92,20 @@ const LoginScreen = () => {
     
     setLoading(true);
     try {
-      // Use a default phone number if not provided
-      await register(email, password, name, phoneNumber || '+90 000 000 00 00');
+      const fullName = `${firstName} ${lastName}`;
+      
+      // Format phone number properly
+      let formattedPhone = phoneNumber.trim();
+      if (formattedPhone && !formattedPhone.startsWith('+90')) {
+        formattedPhone = `+90 ${formattedPhone}`;
+      } else if (!formattedPhone) {
+        // Use default phone format if none provided
+        formattedPhone = '+90 000 000 00 00';
+      }
+      
+      // Register the user
+      await register(email, password, fullName, formattedPhone);
+      
       // Registration was successful, navigate to Home
       navigation.navigate('Home');
     } catch (error) {
@@ -101,7 +118,36 @@ const LoginScreen = () => {
 
   const toggleView = () => {
     setIsLoginView(!isLoginView);
-    // Form alanlarını sakla, sıfırlama
+    // Reset password visibility when switching views
+    setShowPassword(false);
+  };
+  
+  // Format phone number as XXX XXX XX XX
+  const formatPhoneNumber = (input: string) => {
+    // Remove non-digits
+    const digits = input.replace(/\D/g, '');
+    // Limit to 10 digits
+    const limited = digits.slice(0, 10);
+    
+    let formatted = '';
+    for (let i = 0; i < limited.length; i++) {
+      // Add spaces after 3rd, 6th, and 8th digits
+      if (i === 3 || i === 6 || i === 8) {
+        formatted += ' ';
+      }
+      formatted += limited[i];
+    }
+    
+    return formatted;
+  };
+  
+  const handlePhoneChange = (text: string) => {
+    const formatted = formatPhoneNumber(text);
+    setPhoneNumber(formatted);
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
@@ -125,18 +171,33 @@ const LoginScreen = () => {
 
           <View style={styles.formContainer}>
             {!isLoginView && (
-              <View style={styles.inputWrapper}>
-                <Text style={styles.inputLabel}>Adınız Soyadınız</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Adınızı giriniz"
-                  placeholderTextColor={placeholderColor}
-                  value={name}
-                  onChangeText={setName}
-                  keyboardType="default"
-                  autoCapitalize="words"
-                />
-              </View>
+              <>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>Adınız</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Adınızı giriniz"
+                    placeholderTextColor={placeholderColor}
+                    value={firstName}
+                    onChangeText={setFirstName}
+                    keyboardType="default"
+                    autoCapitalize="words"
+                  />
+                </View>
+                
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputLabel}>Soyadınız</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Soyadınızı giriniz"
+                    placeholderTextColor={placeholderColor}
+                    value={lastName}
+                    onChangeText={setLastName}
+                    keyboardType="default"
+                    autoCapitalize="words"
+                  />
+                </View>
+              </>
             )}
             
             <View style={styles.inputWrapper}>
@@ -155,44 +216,58 @@ const LoginScreen = () => {
             {!isLoginView && (
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Telefon</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Telefon numaranızı giriniz"
-                  placeholderTextColor={placeholderColor}
-                  value={phoneNumber}
-                  onChangeText={setPhoneNumber}
-                  keyboardType="phone-pad"
-                />
+                <View style={styles.phoneInputContainer}>
+                  <View style={styles.countryCode}>
+                    <Image source={turkishFlag} style={styles.countryFlag} />
+                    <Text style={styles.countryCodeText}>+90</Text>
+                  </View>
+                  <TextInput
+                    style={styles.phoneInput}
+                    placeholder="Telefon Numarası"
+                    placeholderTextColor={placeholderColor}
+                    value={phoneNumber}
+                    onChangeText={handlePhoneChange}
+                    keyboardType="phone-pad"
+                  />
+                </View>
               </View>
             )}
             
             <View style={styles.inputWrapper}>
               <Text style={styles.inputLabel}>Şifre</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Şifrenizi giriniz"
-                placeholderTextColor={placeholderColor}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                textContentType="oneTimeCode"
-                keyboardAppearance={theme === 'dark' ? 'dark' : 'light'}
-              />
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Şifrenizi giriniz"
+                  placeholderTextColor={placeholderColor}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  textContentType="oneTimeCode"
+                  keyboardAppearance={theme === 'dark' ? 'dark' : 'light'}
+                />
+                <PasswordToggle 
+                  isVisible={showPassword} 
+                  onToggle={togglePasswordVisibility} 
+                />
+              </View>
             </View>
             
             {!isLoginView && (
               <View style={styles.inputWrapper}>
                 <Text style={styles.inputLabel}>Şifre Tekrar</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Şifrenizi tekrar giriniz"
-                  placeholderTextColor={placeholderColor}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                  textContentType="oneTimeCode"
-                  keyboardAppearance={theme === 'dark' ? 'dark' : 'light'}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Şifrenizi tekrar giriniz"
+                    placeholderTextColor={placeholderColor}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry={!showPassword}
+                    textContentType="oneTimeCode"
+                    keyboardAppearance={theme === 'dark' ? 'dark' : 'light'}
+                  />
+                </View>
               </View>
             )}
             
@@ -313,6 +388,54 @@ const lightStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    overflow: 'hidden',
+  },
+  countryCode: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    backgroundColor: '#f1f1f1',
+  },
+  countryFlag: {
+    width: 24,
+    height: 16,
+    marginRight: 6,
+    borderRadius: 2,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  phoneInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#333',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#333',
+  },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
     marginBottom: 24,
@@ -410,6 +533,7 @@ const lightStyles = StyleSheet.create({
 });
 
 const darkStyles = StyleSheet.create({
+  // ... existing dark styles
   container: {
     flex: 1,
     backgroundColor: '#121212',
@@ -439,7 +563,7 @@ const darkStyles = StyleSheet.create({
   },
   tagline: {
     fontSize: 18,
-    color: '#444',
+    color: '#eee',
     marginTop: 8,
     textAlign: 'center',
     fontWeight: '500',
@@ -454,7 +578,7 @@ const darkStyles = StyleSheet.create({
   inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#555',
+    color: '#ccc',
     marginBottom: 6,
   },
   input: {
@@ -466,6 +590,54 @@ const darkStyles = StyleSheet.create({
     color: '#fff',
     borderWidth: 1,
     borderColor: '#444',
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 8,
+    backgroundColor: '#2a2a2a',
+    overflow: 'hidden',
+  },
+  countryCode: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    borderRightWidth: 1,
+    borderRightColor: '#444',
+    backgroundColor: '#333',
+  },
+  countryFlag: {
+    width: 24,
+    height: 16,
+    marginRight: 6,
+    borderRadius: 2,
+  },
+  countryCodeText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  phoneInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#fff',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    height: 50,
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 8,
+    backgroundColor: '#2a2a2a',
+    alignItems: 'center',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#fff',
   },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
@@ -543,12 +715,12 @@ const darkStyles = StyleSheet.create({
   },
   toggleText: {
     fontSize: 16,
-    color: '#fff',
+    color: '#eee',
   },
   toggleLink: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#00B2FF',
+    color: '#64b5f6',
     marginLeft: 5,
   },
   termsContainer: {
@@ -563,4 +735,4 @@ const darkStyles = StyleSheet.create({
   },
 });
 
-export default LoginScreen; 
+export default LoginScreen;

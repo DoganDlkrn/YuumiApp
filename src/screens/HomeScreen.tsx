@@ -104,10 +104,15 @@ export default function HomeScreen() {
                 ]}
                 onPress={() => setOrderType("weekly")}
               >
-                <Text style={[
-                  styles.toggleIcon,
-                  orderType === "weekly" && styles.activeToggleIcon
-                ]}>📅</Text>
+                <View style={styles.iconContainer}>
+                  <Text style={[
+                    styles.calendarIcon,
+                    orderType === "weekly" && styles.activeCalendarIcon
+                  ]}>
+                    {/* Calendar icon for weekly */}
+                    {"\uf073"}
+                  </Text>
+                </View>
                 <Text style={[
                   styles.toggleText,
                   orderType === "weekly" && styles.activeToggleText
@@ -121,10 +126,15 @@ export default function HomeScreen() {
                 ]}
                 onPress={() => setOrderType("daily")}
               >
-                <Text style={[
-                  styles.toggleIcon,
-                  orderType === "daily" && styles.activeToggleIcon
-                ]}>📆</Text>
+                <View style={styles.iconContainer}>
+                  <Text style={[
+                    styles.clockIcon,
+                    orderType === "daily" && styles.activeClockIcon
+                  ]}>
+                    {/* Clock icon for daily */}
+                    {"\uf017"}
+                  </Text>
+                </View>
                 <Text style={[
                   styles.toggleText,
                   orderType === "daily" && styles.activeToggleText
@@ -341,12 +351,27 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
-  toggleIcon: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#777777',
+  iconContainer: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
-  activeToggleIcon: {
+  calendarIcon: {
+    fontSize: 24,
+    color: '#777777',
+    fontWeight: 'bold',
+  },
+  activeCalendarIcon: {
+    color: 'white',
+  },
+  clockIcon: {
+    fontSize: 24,
+    color: '#777777',
+    fontWeight: 'bold',
+  },
+  activeClockIcon: {
     color: 'white',
   },
   aiQuestionContainer: {

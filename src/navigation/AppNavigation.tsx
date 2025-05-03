@@ -8,6 +8,7 @@ import LoginScreen from "../screens/LoginScreen";
 import SearchScreen from "../screens/SearchScreen";
 import OrdersScreen from "../screens/OrdersScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import EditProfileScreen from "../screens/EditProfileScreen";
 import LanguageScreen from "../screens/LanguageScreen";
 import { useLanguage } from "../context/LanguageContext";
 
@@ -23,6 +24,7 @@ export type RootStackParamList = {
   Search: undefined;
   Orders: undefined;
   Profile: undefined;
+  EditProfile: undefined;
   Language: undefined;
   MenuSelection: { orderType: "weekly" | "daily" };
   OrderSummary: { selectedMeals: string[] };
@@ -39,7 +41,8 @@ const defaultTranslations = {
   'tabs.search': 'Arama',
   'tabs.orders': 'Siparişlerim',
   'profile.title': 'Profilim',
-  'profile.language': 'Dil Seçenekleri'
+  'profile.language': 'Dil Seçenekleri',
+  'profile.profileInfo': 'Profil Bilgileri'
 };
 
 export default function AppNavigator() {
@@ -133,6 +136,14 @@ export default function AppNavigator() {
         options={{ 
           title: t('profile.title'),
           animationEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ 
+          title: t('profile.profileInfo'),
+          animationEnabled: true,
         }}
       />
       <Stack.Screen

@@ -79,6 +79,18 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'profile.language': 'Dil Seçenekleri',
     'profile.support': 'Yardım & Destek',
     'profile.logout': 'Çıkış Yap',
+    
+    // Edit Profile Screen
+    'profile.personalInfo': 'Kişisel Bilgiler',
+    'profile.firstName': 'Ad',
+    'profile.lastName': 'Soyad',
+    'profile.email': 'E-posta',
+    'profile.phone': 'Telefon Numarası',
+    'profile.enterFirstName': 'Adınızı giriniz',
+    'profile.enterLastName': 'Soyadınızı giriniz',
+    'profile.enterPhone': 'Telefon numaranızı giriniz',
+    'profile.cantChangeEmail': 'E-posta adresiniz değiştirilemez',
+    'profile.saveChanges': 'Değişiklikleri Kaydet',
 
     // Bottom tabs
     'tabs.food': 'Yemek',
@@ -127,6 +139,18 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'profile.language': 'Language Options',
     'profile.support': 'Help & Support',
     'profile.logout': 'Logout',
+    
+    // Edit Profile Screen
+    'profile.personalInfo': 'Personal Information',
+    'profile.firstName': 'First Name',
+    'profile.lastName': 'Last Name',
+    'profile.email': 'Email',
+    'profile.phone': 'Phone Number',
+    'profile.enterFirstName': 'Enter your first name',
+    'profile.enterLastName': 'Enter your last name',
+    'profile.enterPhone': 'Enter your phone number',
+    'profile.cantChangeEmail': 'Email address cannot be changed',
+    'profile.saveChanges': 'Save Changes',
 
     // Bottom tabs
     'tabs.food': 'Food',

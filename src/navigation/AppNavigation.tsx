@@ -42,7 +42,10 @@ const defaultTranslations = {
   'tabs.orders': 'Siparişlerim',
   'profile.title': 'Profilim',
   'profile.language': 'Dil Seçenekleri',
-  'profile.profileInfo': 'Profil Bilgileri'
+  'profile.profileInfo': 'Profil Bilgileri',
+  'menu.selection': 'Yemek Seçimi',
+  'order.summary': 'Sipariş Özeti',
+  'payment.screen': 'Ödeme Ekranı'
 };
 
 export default function AppNavigator() {
@@ -158,7 +161,7 @@ export default function AppNavigator() {
         name="MenuSelection"
         component={MenuSelectionScreen}
         options={{ 
-          title: "Yemek Seçimi",
+          title: t('menu.selection'),
           animationEnabled: false,
         }}
       />
@@ -166,7 +169,7 @@ export default function AppNavigator() {
         name="OrderSummary"
         component={OrderSummaryScreen}
         options={{ 
-          title: "Sipariş Özeti",
+          title: t('order.summary'),
           animationEnabled: false,
         }}
       />
@@ -174,7 +177,7 @@ export default function AppNavigator() {
         name="Payment"
         component={PaymentScreen}
         options={{ 
-          title: "Ödeme Ekranı",
+          title: t('payment.screen'),
           animationEnabled: false,
         }}
       />

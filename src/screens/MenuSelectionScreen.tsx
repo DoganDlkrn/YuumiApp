@@ -6,17 +6,17 @@ import {
   FlatList,
   TouchableOpacity
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
+import { RouteProp } from "@react-navigation/core";
 import { RootStackParamList } from "../navigation/AppNavigation";
+import ToggleTabs from "../components/ToggleTabs";
 
 // 1) useTheme'i import et
 import { useTheme } from "../context/ThemeContext";
 
-type MenuSelectionScreenNavProp = StackNavigationProp<
-  RootStackParamList,
-  "MenuSelection"
->;
+type MenuSelectionScreenRouteProp = RouteProp<RootStackParamList, "MenuSelection">;
+type MenuSelectionScreenNavProp = StackNavigationProp<RootStackParamList, "MenuSelection">;
 
 const dummyMeals = [
   { id: "1", name: "Tavuk Izgara" },
@@ -25,6 +25,9 @@ const dummyMeals = [
 ];
 
 export default function MenuSelectionScreen() {
+  const route = useRoute<MenuSelectionScreenRouteProp>();
+  const initialOrderType = route.params?.orderType || "weekly";
+  const [orderType, setOrderType] = useState<"weekly" | "daily">(initialOrderType);
   const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
   const navigation = useNavigation() as MenuSelectionScreenNavProp;
   
@@ -42,9 +45,13 @@ export default function MenuSelectionScreen() {
     }
   };
 
+  const handleToggleOrderType = (type: "weekly" | "daily") => {
+    setOrderType(type);
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Haftalık Yemek Seçimi</Text>
+      <ToggleTabs activeTab={orderType} onToggle={handleToggleOrderType} />
       <FlatList
         data={dummyMeals}
         keyExtractor={(item) => item.id}

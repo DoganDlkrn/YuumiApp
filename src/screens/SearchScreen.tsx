@@ -15,12 +15,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
+import { useLanguage } from "../context/LanguageContext";
 
 // Import images
-const searchIcon: ImageSourcePropType = require('../assets/search-interface-symbol.png');
-const restaurantIcon: ImageSourcePropType = require('../assets/restaurant.png');
-const orderIcon: ImageSourcePropType = require('../assets/order.png');
-const userIcon: ImageSourcePropType = require('../assets/user.png');
+const searchIcon: ImageSourcePropType = require('../assets/images/search-interface-symbol.png');
+const restaurantIcon: ImageSourcePropType = require('../assets/images/restaurant.png');
+const orderIcon: ImageSourcePropType = require('../assets/images/order.png');
+const userIcon: ImageSourcePropType = require('../assets/images/user.png');
 
 type SearchScreenNavProp = StackNavigationProp<RootStackParamList, "Search">;
 
@@ -28,6 +29,18 @@ export default function SearchScreen() {
   const navigation = useNavigation() as SearchScreenNavProp;
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState<string[]>([]);
+  const { t, language } = useLanguage();
+  
+  // Categories should be localized depending on language
+  const categories = [
+    t('category.pizza'),
+    t('category.burger'),
+    t('category.kebap'),
+    t('category.dessert'),
+    t('category.drinks'),
+    t('category.breakfast')
+  ];
+  
   const [recentSearches, setRecentSearches] = useState<string[]>([
     "Pizza",
     "Burger",
@@ -36,16 +49,28 @@ export default function SearchScreen() {
     "Dürüm",
   ]);
 
+  // Update recent searches when language changes
+  useEffect(() => {
+    // This would ideally load from storage in a real app
+    setRecentSearches([
+      t('category.pizza'),
+      t('category.burger'),
+      t('category.kebap'),
+      "Lahmacun",
+      "Dürüm",
+    ]);
+  }, [language, t]);
+
   useEffect(() => {
     // Simulate search results
     if (searchText.trim() !== "") {
-      const results = ["Pizza", "Burger", "Kebap", "Tatlı", "İçecek", "Kahvaltı"]
+      const results = categories
         .filter(item => item.toLowerCase().includes(searchText.toLowerCase()));
       setSearchResults(results);
     } else {
       setSearchResults([]);
     }
-  }, [searchText]);
+  }, [searchText, categories]);
 
   const handleSearch = (text: string) => {
     setSearchText(text);
@@ -57,7 +82,7 @@ export default function SearchScreen() {
 
       {/* Blue Header Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>Arama</Text>
+        <Text style={styles.headerTitle}>{t('tabs.search')}</Text>
 
         {/* Search Section */}
         <View style={styles.searchSection}>
@@ -65,7 +90,7 @@ export default function SearchScreen() {
             <Image source={searchIcon} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Restoran veya yemek ara..."
+              placeholder={t('search.placeholder')}
               placeholderTextColor="#777"
               value={searchText}
               onChangeText={handleSearch}
@@ -87,7 +112,7 @@ export default function SearchScreen() {
             <>
               {/* Recent Searches */}
               <View style={styles.recentSearchesSection}>
-                <Text style={styles.sectionTitle}>Son Aramalar</Text>
+                <Text style={styles.sectionTitle}>{t('search.recentSearches')}</Text>
                 {recentSearches.map((search, index) => (
                   <TouchableOpacity 
                     key={index} 
@@ -102,9 +127,9 @@ export default function SearchScreen() {
               
               {/* Popular Categories */}
               <View style={styles.categoriesContainer}>
-                <Text style={styles.sectionTitle}>Popüler Kategoriler</Text>
+                <Text style={styles.sectionTitle}>{t('search.popularCategories')}</Text>
                 <View style={styles.categoriesGrid}>
-                  {['Pizza', 'Burger', 'Kebap', 'Tatlı', 'İçecek', 'Kahvaltı'].map((category, index) => (
+                  {categories.map((category, index) => (
                     <TouchableOpacity 
                       key={index} 
                       style={styles.categoryCard}
@@ -119,7 +144,7 @@ export default function SearchScreen() {
           ) : (
             // Search Results
             <View style={styles.searchResultsSection}>
-              <Text style={styles.sectionTitle}>Arama Sonuçları</Text>
+              <Text style={styles.sectionTitle}>{t('search.results')}</Text>
               {searchResults.length > 0 ? (
                 searchResults.map((result, index) => (
                   <TouchableOpacity 
@@ -138,7 +163,7 @@ export default function SearchScreen() {
                   </TouchableOpacity>
                 ))
               ) : (
-                <Text style={styles.noResultsText}>Sonuç bulunamadı</Text>
+                <Text style={styles.noResultsText}>{t('search.noResults')}</Text>
               )}
             </View>
           )}
@@ -155,12 +180,12 @@ export default function SearchScreen() {
           onPress={() => navigation.navigate('Home')}
         >
           <Image source={restaurantIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Yemek</Text>
+          <Text style={styles.tabLabel}>{t('tabs.food')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
           <Image source={searchIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>Arama</Text>
+          <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.search')}</Text>
           <View style={styles.activeIndicator} />
         </TouchableOpacity>
         
@@ -169,7 +194,7 @@ export default function SearchScreen() {
           onPress={() => navigation.navigate('Orders')}
         >
           <Image source={orderIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Siparişlerim</Text>
+          <Text style={styles.tabLabel}>{t('tabs.orders')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -177,7 +202,7 @@ export default function SearchScreen() {
           onPress={() => navigation.navigate('Profile')}
         >
           <Image source={userIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Profilim</Text>
+          <Text style={styles.tabLabel}>{t('tabs.profile')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -6,7 +6,9 @@ import {
   TouchableOpacity, 
   FlatList, 
   StatusBar,
-  Platform
+  Platform,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -17,8 +19,37 @@ export default function LanguageScreen() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const { language: currentLanguage, setLanguage, t } = useLanguage();
+  const [isChanging, setIsChanging] = useState(false);
   
   const styles = theme === 'dark' ? darkStyles : lightStyles;
+
+  const handleLanguageChange = async (languageCode) => {
+    if (currentLanguage !== languageCode) {
+      setIsChanging(true);
+      try {
+        await setLanguage(languageCode);
+        
+        // Dil değişikliği bildirimini göster
+        Alert.alert(
+          languageCode === 'tr' ? 'Dil Değiştirildi' : 'Language Changed',
+          languageCode === 'tr' 
+            ? 'Dil başarıyla Türkçe olarak ayarlandı.'
+            : 'Language successfully set to English.',
+          [{ text: 'OK' }]
+        );
+        
+        // Değişiklik tamamlandıktan sonra geri git
+        navigation.goBack();
+      } catch (error) {
+        console.error('Dil değiştirme hatası:', error);
+      } finally {
+        setIsChanging(false);
+      }
+    } else {
+      // Zaten seçili dil ise sadece geri git
+      navigation.goBack();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -30,6 +61,7 @@ export default function LanguageScreen() {
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => navigation.goBack()}
+            disabled={isChanging}
           >
             <Text style={styles.backButtonText}>{"←"}</Text>
           </TouchableOpacity>
@@ -40,6 +72,15 @@ export default function LanguageScreen() {
       
       {/* White Content Section */}
       <View style={styles.whiteContainer}>
+        {isChanging && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#00B2FF" />
+            <Text style={styles.loadingText}>
+              {currentLanguage === 'tr' ? 'Dil değiştiriliyor...' : 'Changing language...'}
+            </Text>
+          </View>
+        )}
+        
         {/* Language List */}
         <FlatList
           data={LANGUAGES}
@@ -47,10 +88,8 @@ export default function LanguageScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity 
               style={styles.languageItem}
-              onPress={async () => {
-                await setLanguage(item.code);
-                navigation.goBack();
-              }}
+              onPress={() => handleLanguageChange(item.code)}
+              disabled={isChanging}
             >
               <View style={styles.languageInfo}>
                 <Text style={styles.languageFlag}>{item.flag}</Text>
@@ -163,6 +202,22 @@ const lightStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#333',
+  },
 });
 
 const darkStyles = StyleSheet.create({
@@ -253,5 +308,21 @@ const darkStyles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(18, 18, 18, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#fff',
   },
 }); 

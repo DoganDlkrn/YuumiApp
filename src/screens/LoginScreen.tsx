@@ -34,7 +34,7 @@ type LoginScreenNavProp = StackNavigationProp<RootStackParamList, 'Login'>;
 
 const LoginScreen = () => {
   const navigation = useNavigation() as LoginScreenNavProp;
-  const { login, register, loading } = useAuth();
+  const { login, register, loading, loginWithGoogle } = useAuth();
   const { setLoading } = useNavigationLoading();
   const { theme } = useTheme();
   const [isLoginView, setIsLoginView] = useState(true);
@@ -51,14 +51,14 @@ const LoginScreen = () => {
 
   const styles = theme === 'dark' ? darkStyles : lightStyles;
 
-  const handleGoogleLogin = () => {
-    // Implement Google login functionality
-    // For now, navigate to home screen
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      navigation.navigate('Home');
-    }, 1500);
+  const handleGoogleLogin = async () => {
+    try {
+      await loginWithGoogle();
+      // Google login işlemi başarılı olduğunda,
+      // AuthContext'e göre işlem yapacak
+    } catch (error) {
+      console.log('Google giriş başarısız:', error);
+    }
   };
 
   const handleLogin = async () => {
@@ -106,8 +106,25 @@ const LoginScreen = () => {
       // Register the user
       await register(email, password, fullName, formattedPhone);
       
-      // Registration was successful, navigate to Home
-      navigation.navigate('Home');
+      // Show success message and navigate to Login
+      Alert.alert(
+        'Kayıt Başarılı',
+        'Hesabınız oluşturuldu. Şimdi giriş yapabilirsiniz.',
+        [
+          {
+            text: 'Tamam',
+            onPress: () => {
+              setIsLoginView(true);
+              // Clear registration form
+              setFirstName('');
+              setLastName('');
+              setPhoneNumber('');
+              setPassword('');
+              setConfirmPassword('');
+            }
+          }
+        ]
+      );
     } catch (error) {
       // Error is already handled in the AuthContext
       console.log('Kayıt işlemi başarısız:', error);

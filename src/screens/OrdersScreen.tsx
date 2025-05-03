@@ -15,46 +15,48 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from '../navigation/AppNavigation';
+import { useLanguage } from "../context/LanguageContext";
 
 // Import images
-const searchIcon: ImageSourcePropType = require('../assets/search-interface-symbol.png');
-const restaurantIcon: ImageSourcePropType = require('../assets/restaurant.png');
-const orderIcon: ImageSourcePropType = require('../assets/order.png');
-const userIcon: ImageSourcePropType = require('../assets/user.png');
+const searchIcon: ImageSourcePropType = require('../assets/images/search-interface-symbol.png');
+const restaurantIcon: ImageSourcePropType = require('../assets/images/restaurant.png');
+const orderIcon: ImageSourcePropType = require('../assets/images/order.png');
+const userIcon: ImageSourcePropType = require('../assets/images/user.png');
 
 type OrdersScreenNavProp = StackNavigationProp<RootStackParamList, "Orders">;
-
-// Mock data for orders
-const mockOrders = [
-  {
-    id: '1',
-    restaurant: 'Restoran A',
-    date: '31 Mar 2023',
-    items: ['Pizza Margherita', 'Cola'],
-    status: 'Teslim edildi',
-    total: '79,90 ₺'
-  },
-  {
-    id: '2',
-    restaurant: 'Restoran B',
-    date: '28 Mar 2023',
-    items: ['Burger Menu', 'Patates Kızartması'],
-    status: 'Teslim edildi',
-    total: '89,90 ₺'
-  },
-  {
-    id: '3',
-    restaurant: 'Restoran C',
-    date: '25 Mar 2023',
-    items: ['Kebap Porsiyon', 'Ayran'],
-    status: 'Teslim edildi',
-    total: '120,00 ₺'
-  },
-];
 
 export default function OrdersScreen() {
   const navigation = useNavigation() as OrdersScreenNavProp;
   const [activeTab, setActiveTab] = useState<'past' | 'active'>('past');
+  const { t } = useLanguage();
+  
+  // Mock data for orders - this could be enhanced to support translated content
+  const mockOrders = [
+    {
+      id: '1',
+      restaurant: 'Restoran A',
+      date: '31 Mar 2023',
+      items: ['Pizza Margherita', 'Cola'],
+      status: t('orders.delivered'),
+      total: '79,90 ₺'
+    },
+    {
+      id: '2',
+      restaurant: 'Restoran B',
+      date: '28 Mar 2023',
+      items: ['Burger Menu', 'Patates Kızartması'],
+      status: t('orders.delivered'),
+      total: '89,90 ₺'
+    },
+    {
+      id: '3',
+      restaurant: 'Restoran C',
+      date: '25 Mar 2023',
+      items: ['Kebap Porsiyon', 'Ayran'],
+      status: t('orders.delivered'),
+      total: '120,00 ₺'
+    },
+  ];
 
   const renderOrderItem = ({ item }: { item: typeof mockOrders[0] }) => (
     <TouchableOpacity style={styles.orderCard}>
@@ -64,7 +66,7 @@ export default function OrdersScreen() {
       </View>
       
       <View style={styles.orderContent}>
-        <Text style={styles.itemsLabel}>Sipariş Özeti:</Text>
+        <Text style={styles.itemsLabel}>{t('orders.summary')}:</Text>
         {item.items.map((orderItem, index) => (
           <Text key={index} style={styles.orderItem}>• {orderItem}</Text>
         ))}
@@ -79,7 +81,7 @@ export default function OrdersScreen() {
       </View>
       
       <TouchableOpacity style={styles.reorderButton}>
-        <Text style={styles.reorderButtonText}>Tekrar Sipariş Ver</Text>
+        <Text style={styles.reorderButtonText}>{t('orders.reorder')}</Text>
       </TouchableOpacity>
     </TouchableOpacity>
   );
@@ -90,7 +92,7 @@ export default function OrdersScreen() {
 
       {/* Blue Header Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>Siparişlerim</Text>
+        <Text style={styles.headerTitle}>{t('tabs.orders')}</Text>
         
         {/* Tabs */}
         <View style={styles.tabsContainer}>
@@ -99,7 +101,7 @@ export default function OrdersScreen() {
             onPress={() => setActiveTab('past')}
           >
             <Text style={[styles.tabText, activeTab === 'past' && styles.activeTabText]}>
-              Geçmiş Siparişler
+              {t('orders.pastOrders')}
             </Text>
           </TouchableOpacity>
           
@@ -108,7 +110,7 @@ export default function OrdersScreen() {
             onPress={() => setActiveTab('active')}
           >
             <Text style={[styles.tabText, activeTab === 'active' && styles.activeTabText]}>
-              Aktif Siparişler
+              {t('orders.activeOrders')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -125,19 +127,19 @@ export default function OrdersScreen() {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={(
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Henüz siparişiniz bulunmamaktadır.</Text>
+                <Text style={styles.emptyText}>{t('orders.noOrdersYet')}</Text>
               </View>
             )}
             ListFooterComponent={<View style={styles.bottomSpacing} />}
           />
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Şu anda aktif siparişiniz bulunmamaktadır.</Text>
+            <Text style={styles.emptyText}>{t('orders.noActiveOrders')}</Text>
             <TouchableOpacity 
               style={styles.orderNowButton}
               onPress={() => navigation.navigate('Home')}
             >
-              <Text style={styles.orderNowButtonText}>Hemen Sipariş Ver</Text>
+              <Text style={styles.orderNowButtonText}>{t('orders.orderNow')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -150,7 +152,7 @@ export default function OrdersScreen() {
           onPress={() => navigation.navigate('Home')}
         >
           <Image source={restaurantIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Yemek</Text>
+          <Text style={styles.tabLabel}>{t('tabs.food')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -158,12 +160,12 @@ export default function OrdersScreen() {
           onPress={() => navigation.navigate('Search')}
         >
           <Image source={searchIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Arama</Text>
+          <Text style={styles.tabLabel}>{t('tabs.search')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
           <Image source={orderIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>Siparişlerim</Text>
+          <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.orders')}</Text>
           <View style={styles.activeIndicator} />
         </TouchableOpacity>
         
@@ -172,7 +174,7 @@ export default function OrdersScreen() {
           onPress={() => navigation.navigate('Profile')}
         >
           <Image source={userIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Profilim</Text>
+          <Text style={styles.tabLabel}>{t('tabs.profile')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

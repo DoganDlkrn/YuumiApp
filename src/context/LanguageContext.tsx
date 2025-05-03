@@ -97,6 +97,45 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'tabs.search': 'Arama',
     'tabs.orders': 'Siparişlerim',
     'tabs.profile': 'Profilim',
+
+    // Menu screens
+    'menu.selection': 'Yemek Seçimi',
+    'order.summary': 'Sipariş Özeti',
+    'payment.screen': 'Ödeme Ekranı',
+    
+    // Home Screen
+    'location.select': 'Konum Seç',
+    'search.placeholder': 'Restoran veya yemek ara...',
+    'ai.askQuestion': 'Yapay zekaya soru sor',
+    'toggle.weekly': 'Haftalık',
+    'toggle.daily': 'Günlük',
+    'home.categories': 'Kategoriler',
+    'home.popularRestaurants': 'Popüler Restoranlar',
+    'restaurant.tastyFood': 'Lezzetli yemekler',
+    
+    // Categories
+    'category.pizza': 'Pizza',
+    'category.burger': 'Burger',
+    'category.kebap': 'Kebap',
+    'category.dessert': 'Tatlı',
+    'category.drinks': 'İçecek',
+    'category.breakfast': 'Kahvaltı',
+    
+    // Search Screen
+    'search.recentSearches': 'Son Aramalar',
+    'search.popularCategories': 'Popüler Kategoriler',
+    'search.results': 'Arama Sonuçları',
+    'search.noResults': 'Sonuç bulunamadı',
+    
+    // Orders Screen
+    'orders.pastOrders': 'Geçmiş Siparişler',
+    'orders.activeOrders': 'Aktif Siparişler',
+    'orders.summary': 'Sipariş Özeti',
+    'orders.delivered': 'Teslim edildi',
+    'orders.reorder': 'Tekrar Sipariş Ver',
+    'orders.noOrdersYet': 'Henüz siparişiniz bulunmamaktadır.',
+    'orders.noActiveOrders': 'Şu anda aktif siparişiniz bulunmamaktadır.',
+    'orders.orderNow': 'Hemen Sipariş Ver',
   },
 
   en: {
@@ -157,6 +196,45 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'tabs.search': 'Search',
     'tabs.orders': 'My Orders',
     'tabs.profile': 'Profile',
+    
+    // Menu screens
+    'menu.selection': 'Food Selection',
+    'order.summary': 'Order Summary',
+    'payment.screen': 'Payment',
+    
+    // Home Screen
+    'location.select': 'Select Location',
+    'search.placeholder': 'Search for restaurants or food...',
+    'ai.askQuestion': 'Ask AI a question',
+    'toggle.weekly': 'Weekly',
+    'toggle.daily': 'Daily',
+    'home.categories': 'Categories',
+    'home.popularRestaurants': 'Popular Restaurants',
+    'restaurant.tastyFood': 'Delicious food',
+    
+    // Categories
+    'category.pizza': 'Pizza',
+    'category.burger': 'Burger',
+    'category.kebap': 'Kebab',
+    'category.dessert': 'Dessert',
+    'category.drinks': 'Drinks',
+    'category.breakfast': 'Breakfast',
+    
+    // Search Screen
+    'search.recentSearches': 'Recent Searches',
+    'search.popularCategories': 'Popular Categories',
+    'search.results': 'Search Results',
+    'search.noResults': 'No results found',
+    
+    // Orders Screen
+    'orders.pastOrders': 'Past Orders',
+    'orders.activeOrders': 'Active Orders',
+    'orders.summary': 'Order Summary',
+    'orders.delivered': 'Delivered',
+    'orders.reorder': 'Reorder',
+    'orders.noOrdersYet': 'You have no orders yet.',
+    'orders.noActiveOrders': 'You have no active orders at the moment.',
+    'orders.orderNow': 'Order Now',
   },
 };
 
@@ -215,6 +293,10 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       // Only attempt to save if safe
       if (isStorageReady) {
         await safeAsyncStorage.setItem(LANGUAGE_STORAGE_KEY, code);
+        
+        // Önemli: Olay gönder - dil değiştiğinde tüm component'leri haberdar et
+        // App.tsx içindeki useEffect bunu yakalayıp uygulamayı yeniden başlatacak
+        console.log(`Language changed to ${code}`);
       }
     } catch (error) {
       console.error('Error setting language:', error);

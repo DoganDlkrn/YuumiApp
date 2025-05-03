@@ -15,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
+import { Svg, Path, Rect, G, Text as SvgText, Circle } from 'react-native-svg';
+import { useLanguage } from "../context/LanguageContext";
 
 // Import images
 const menuIcon: ImageSourcePropType = require('../assets/images/menu.png');
@@ -25,6 +27,9 @@ const aiIcon: ImageSourcePropType = require('../assets/images/robot.png');
 const restaurantIcon: ImageSourcePropType = require('../assets/images/restaurant.png');
 const orderIcon: ImageSourcePropType = require('../assets/images/order.png');
 const userIcon: ImageSourcePropType = require('../assets/images/user.png');
+// Add calendar and clock icons
+const calendarIcon: ImageSourcePropType = require('../assets/images/calendar.png');
+const clockIcon: ImageSourcePropType = require('../assets/images/clock.png');
 
 // Tür tanımı düzeltildi
 type HomeScreenNavProp = StackNavigationProp<RootStackParamList, "Home">;
@@ -34,6 +39,7 @@ export default function HomeScreen() {
   const navigation = useNavigation() as HomeScreenNavProp;
   const [orderType, setOrderType] = useState<"weekly" | "daily">("weekly");
   const [searchText, setSearchText] = useState("");
+  const { t, language } = useLanguage();
 
   // Force status bar to be light-content and make it visible on iOS
   useEffect(() => {
@@ -60,7 +66,7 @@ export default function HomeScreen() {
 
           <TouchableOpacity style={styles.locationContainer}>
             <Image source={locationIcon} style={styles.locationIcon} />
-            <Text style={styles.locationText}>Konum Seç</Text>
+            <Text style={styles.locationText}>{t('location.select')}</Text>
             <Text style={styles.locationArrow}>▼</Text>
           </TouchableOpacity>
 
@@ -75,7 +81,7 @@ export default function HomeScreen() {
             <Image source={searchIcon} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Restoran veya yemek ara..."
+              placeholder={t('search.placeholder')}
               placeholderTextColor="#777"
               value={searchText}
               onChangeText={setSearchText}
@@ -86,7 +92,7 @@ export default function HomeScreen() {
         {/* AI Question Section */}
         <TouchableOpacity style={styles.aiQuestionContainer}>
           <Image source={aiIcon} style={styles.aiQuestionIcon} />
-          <Text style={styles.aiQuestionText}>Yapay zekaya soru sor</Text>
+          <Text style={styles.aiQuestionText}>{t('ai.askQuestion')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -105,18 +111,40 @@ export default function HomeScreen() {
                 onPress={() => setOrderType("weekly")}
               >
                 <View style={styles.iconContainer}>
-                  <Text style={[
-                    styles.calendarIcon,
-                    orderType === "weekly" && styles.activeCalendarIcon
-                  ]}>
-                    {/* Calendar icon for weekly */}
-                    {"\uf073"}
-                  </Text>
+                  <Svg width="24" height="24" viewBox="0 0 24 24">
+                    <Rect
+                      x="2"
+                      y="4"
+                      width="20"
+                      height="18"
+                      rx="2"
+                      stroke={orderType === "weekly" ? "white" : "#777777"}
+                      strokeWidth="2"
+                      fill="none"
+                    />
+                    <Rect
+                      x="2"
+                      y="4"
+                      width="20"
+                      height="6"
+                      fill={orderType === "weekly" ? "white" : "#777777"}
+                    />
+                    <SvgText
+                      x="12"
+                      y="16"
+                      fontSize="12"
+                      fontWeight="bold"
+                      fill={orderType === "weekly" ? "white" : "#777777"}
+                      textAnchor="middle"
+                    >
+                      7
+                    </SvgText>
+                  </Svg>
                 </View>
                 <Text style={[
                   styles.toggleText,
                   orderType === "weekly" && styles.activeToggleText
-                ]}>Haftalık</Text>
+                ]}>{t('toggle.weekly')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -127,29 +155,35 @@ export default function HomeScreen() {
                 onPress={() => setOrderType("daily")}
               >
                 <View style={styles.iconContainer}>
-                  <Text style={[
-                    styles.clockIcon,
-                    orderType === "daily" && styles.activeClockIcon
-                  ]}>
-                    {/* Clock icon for daily */}
-                    {"\uf017"}
-                  </Text>
+                  <Svg width="24" height="24" viewBox="0 0 24 24">
+                    <G fill="none" stroke={orderType === "daily" ? "white" : "#777777"} strokeWidth="2">
+                      <Circle cx="12" cy="12" r="10" />
+                      <Path d="M12 6v6L16 10" />
+                    </G>
+                  </Svg>
                 </View>
                 <Text style={[
                   styles.toggleText,
                   orderType === "daily" && styles.activeToggleText
-                ]}>Günlük</Text>
+                ]}>{t('toggle.daily')}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {/* Categories */}
           <View style={styles.categoriesContainer}>
-            <Text style={styles.sectionTitle}>Kategoriler</Text>
+            <Text style={styles.sectionTitle}>{t('home.categories')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-              {['Pizza', 'Burger', 'Kebap', 'Tatlı', 'İçecek', 'Kahvaltı'].map((category, index) => (
+              {[
+                {key: 'pizza', label: t('category.pizza')},
+                {key: 'burger', label: t('category.burger')},
+                {key: 'kebap', label: t('category.kebap')},
+                {key: 'dessert', label: t('category.dessert')},
+                {key: 'drinks', label: t('category.drinks')},
+                {key: 'breakfast', label: t('category.breakfast')}
+              ].map((category, index) => (
                 <TouchableOpacity key={index} style={styles.categoryItem}>
-                  <Text style={styles.categoryText}>{category}</Text>
+                  <Text style={styles.categoryText}>{category.label}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -157,7 +191,7 @@ export default function HomeScreen() {
 
           {/* Restaurants */}
           <View style={styles.restaurantsContainer}>
-            <Text style={styles.sectionTitle}>Popüler Restoranlar</Text>
+            <Text style={styles.sectionTitle}>{t('home.popularRestaurants')}</Text>
             {['Restoran A', 'Restoran B', 'Restoran C'].map((restaurant, index) => (
               <TouchableOpacity
                 key={index}
@@ -169,7 +203,7 @@ export default function HomeScreen() {
                 </View>
                 <View style={styles.restaurantInfo}>
                   <Text style={styles.restaurantName}>{restaurant}</Text>
-                  <Text style={styles.restaurantDescription}>Lezzetli yemekler</Text>
+                  <Text style={styles.restaurantDescription}>{t('restaurant.tastyFood')}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -184,7 +218,7 @@ export default function HomeScreen() {
       <View style={styles.bottomTabBar}>
         <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
           <Image source={restaurantIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>Yemek</Text>
+          <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.food')}</Text>
           <View style={styles.activeIndicator} />
         </TouchableOpacity>
         
@@ -193,7 +227,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate('Search')}
         >
           <Image source={searchIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Arama</Text>
+          <Text style={styles.tabLabel}>{t('tabs.search')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -201,7 +235,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate('Orders')}
         >
           <Image source={orderIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Siparişlerim</Text>
+          <Text style={styles.tabLabel}>{t('tabs.orders')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -209,7 +243,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate('Profile')}
         >
           <Image source={userIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>Profilim</Text>
+          <Text style={styles.tabLabel}>{t('tabs.profile')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -352,27 +386,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   iconContainer: {
-    width: 20,
-    height: 20,
+    width: 24,
+    height: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 8,
   },
-  calendarIcon: {
-    fontSize: 24,
-    color: '#777777',
-    fontWeight: 'bold',
+  tabIconSmall: {
+    width: 22,
+    height: 22,
+    tintColor: '#777777',
+    resizeMode: 'contain',
   },
-  activeCalendarIcon: {
-    color: 'white',
-  },
-  clockIcon: {
-    fontSize: 24,
-    color: '#777777',
-    fontWeight: 'bold',
-  },
-  activeClockIcon: {
-    color: 'white',
+  activeImage: {
+    tintColor: 'white',
   },
   aiQuestionContainer: {
     marginHorizontal: 16,

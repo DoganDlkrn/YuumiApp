@@ -15,7 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
-import { Svg, Path, Rect, G, Text as SvgText, Circle } from 'react-native-svg';
+import { Svg, Path, Rect, G, Text as SvgText, Circle, Line, Polyline } from 'react-native-svg';
 import { useLanguage } from "../context/LanguageContext";
 
 // Import images
@@ -112,33 +112,13 @@ export default function HomeScreen() {
               >
                 <View style={styles.iconContainer}>
                   <Svg width="24" height="24" viewBox="0 0 24 24">
-                    <Rect
-                      x="2"
-                      y="4"
-                      width="20"
-                      height="18"
-                      rx="2"
-                      stroke={orderType === "weekly" ? "white" : "#777777"}
-                      strokeWidth="2"
-                      fill="none"
-                    />
-                    <Rect
-                      x="2"
-                      y="4"
-                      width="20"
-                      height="6"
-                      fill={orderType === "weekly" ? "white" : "#777777"}
-                    />
-                    <SvgText
-                      x="12"
-                      y="16"
-                      fontSize="12"
-                      fontWeight="bold"
-                      fill={orderType === "weekly" ? "white" : "#777777"}
-                      textAnchor="middle"
-                    >
-                      7
-                    </SvgText>
+                    <G stroke={orderType === "weekly" ? "white" : "#777777"} fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <Rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <Line x1="16" y1="2" x2="16" y2="6" />
+                      <Line x1="8" y1="2" x2="8" y2="6" />
+                      <Line x1="3" y1="10" x2="21" y2="10" />
+                      <SvgText x="12" y="19" textAnchor="middle" fontSize="9" fontFamily="Arial" fill={orderType === "weekly" ? "white" : "#777777"}>7</SvgText>
+                    </G>
                   </Svg>
                 </View>
                 <Text style={[
@@ -156,9 +136,9 @@ export default function HomeScreen() {
               >
                 <View style={styles.iconContainer}>
                   <Svg width="24" height="24" viewBox="0 0 24 24">
-                    <G fill="none" stroke={orderType === "daily" ? "white" : "#777777"} strokeWidth="2">
+                    <G fill="none" stroke={orderType === "daily" ? "white" : "#777777"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <Circle cx="12" cy="12" r="10" />
-                      <Path d="M12 6v6L16 10" />
+                      <Polyline points="12 6 12 12 16 14" />
                     </G>
                   </Svg>
                 </View>

@@ -56,8 +56,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Google Sign-In'i yapılandır
     GoogleSignin.configure({
       webClientId: '156043387950-2obvo4oltmuigmr7mupach0u3r2d7ie6.apps.googleusercontent.com', // Firebase konsolundan alındı (Web için)
-      iosClientId: '156043387950-nogamdcbcn8bdn3snn8m1gu9a4btc31f.apps.googleusercontent.com', // iOS için güncellenmiş ID
+      iosClientId: '156043387950-pn4nvtug88tptnrfg4l36mi6lplauc2t.apps.googleusercontent.com', // iOS için güncellenmiş ID
       offlineAccess: true,
+      forceCodeForRefreshToken: true, // iOS için gerekli
     });
   }, []);
 
@@ -157,20 +158,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // userInfo'yu al ve içindeki tokenları doğru şekilde eriş
           const userInfo = await GoogleSignin.signIn();
+          console.log('Google Sign-In successful, userInfo:', userInfo);
           
           // Firebase kimliği için Google kimlik bilgilerini kullan
-          // @ts-ignore
-          if (userInfo && userInfo.idToken) {
-            // @ts-ignore
-            const credential = GoogleAuthProvider.credential(userInfo.idToken);
+          if (userInfo && 'idToken' in userInfo) {
+            const idToken = (userInfo as any).idToken;
+            const credential = GoogleAuthProvider.credential(idToken);
             const userCredential = await signInWithCredential(auth, credential);
             
             // Kullanıcı profili oluştur veya kontrol et
             await ensureUserProfile(userCredential.user);
           } else {
+            console.error('Google Sign-In failed: No ID token received', userInfo);
             throw new Error('Google Sign-In failed: No ID token received');
           }
         } catch (error: any) {
+          console.error('Google Sign-In process error:', error);
           if (error.code === statusCodes.SIGN_IN_CANCELLED) {
             // Kullanıcı girişi iptal etti
             console.log('İptal edildi');

@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, View, Text } from 'react-native';
 import { useTheme } from '../context/ThemeContext';
-import Svg, { Circle, Path, G } from 'react-native-svg';
+import Svg, { Circle, Path, G, Line } from 'react-native-svg';
 
 interface PasswordToggleProps {
   isVisible: boolean;
@@ -18,7 +18,7 @@ const PasswordToggle: React.FC<PasswordToggleProps> = ({
   const isDark = theme === 'dark';
   
   // Colors
-  const iconColor = isDark ? '#CCCCCC' : '#888888';
+  const iconColor = isDark ? '#CCCCCC' : '#555';
   
   return (
     <TouchableOpacity
@@ -29,19 +29,19 @@ const PasswordToggle: React.FC<PasswordToggleProps> = ({
       accessibilityRole="button"
     >
       {isVisible ? (
-        // Eye Open Icon - Simplified to match screenshot
+        // Eye Open Icon - Updated with the provided SVG
         <Svg width={size} height={size} viewBox="0 0 24 24">
-          <G fill="none" stroke={iconColor} strokeWidth="1.5">
-            <Path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7z" />
+          <G fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
             <Circle cx="12" cy="12" r="3" />
           </G>
         </Svg>
       ) : (
-        // Eye Closed Icon - Simplified to match screenshot
+        // Eye Closed Icon - Updated with the provided SVG
         <Svg width={size} height={size} viewBox="0 0 24 24">
-          <G fill="none" stroke={iconColor} strokeWidth="1.5">
-            <Path d="M12 5C7 5 2.73 8.11 1 12c1.73 3.89 6 7 11 7s9.27-3.11 11-7c-1.73-3.89-6-7-11-7z" />
-            <Path d="M3 3l18 18" strokeLinecap="round" />
+          <G fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+            <Line x1="1" y1="1" x2="23" y2="23" />
           </G>
         </Svg>
       )}

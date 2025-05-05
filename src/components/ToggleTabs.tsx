@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Svg, Path, Rect, G, Text as SvgText, Circle } from 'react-native-svg';
+import { Svg, Path, Rect, G, Text as SvgText, Circle, Line, Polyline } from 'react-native-svg';
 
 interface ToggleTabsProps {
   activeTab: 'weekly' | 'daily';
@@ -21,33 +21,13 @@ const ToggleTabs: React.FC<ToggleTabsProps> = ({ activeTab, onToggle }) => {
         >
           <View style={styles.iconContainer}>
             <Svg width="24" height="24" viewBox="0 0 24 24">
-              <Rect
-                x="2"
-                y="4"
-                width="20"
-                height="18"
-                rx="2"
-                stroke={activeTab === "weekly" ? "#00B2FF" : "#777"}
-                strokeWidth="2"
-                fill="none"
-              />
-              <Rect
-                x="2"
-                y="4"
-                width="20"
-                height="6"
-                fill={activeTab === "weekly" ? "#00B2FF" : "#777"}
-              />
-              <SvgText
-                x="12"
-                y="16"
-                fontSize="10"
-                fontWeight="bold"
-                fill={activeTab === "weekly" ? "#00B2FF" : "#777"}
-                textAnchor="middle"
-              >
-                7
-              </SvgText>
+              <G stroke={activeTab === "weekly" ? "#00B2FF" : "#555"} fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <Rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <Line x1="16" y1="2" x2="16" y2="6" />
+                <Line x1="8" y1="2" x2="8" y2="6" />
+                <Line x1="3" y1="10" x2="21" y2="10" />
+                <SvgText x="12" y="19" textAnchor="middle" fontSize="9" fontFamily="Arial" fill={activeTab === "weekly" ? "#00B2FF" : "#555"}>7</SvgText>
+              </G>
             </Svg>
           </View>
           <Text style={[
@@ -65,9 +45,9 @@ const ToggleTabs: React.FC<ToggleTabsProps> = ({ activeTab, onToggle }) => {
         >
           <View style={styles.iconContainer}>
             <Svg width="24" height="24" viewBox="0 0 24 24">
-              <G fill="none" stroke={activeTab === "daily" ? "#00B2FF" : "#777"} strokeWidth="2">
+              <G fill="none" stroke={activeTab === "daily" ? "#00B2FF" : "#555"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <Circle cx="12" cy="12" r="10" />
-                <Path d="M12 6v6L16 10" />
+                <Polyline points="12 6 12 12 16 14" />
               </G>
             </Svg>
           </View>
@@ -92,67 +72,66 @@ const ToggleTabs: React.FC<ToggleTabsProps> = ({ activeTab, onToggle }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 10,
     width: '100%',
-    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   toggleWrapper: {
     flexDirection: 'row',
-    width: '80%',
-    maxWidth: 500,
-    marginBottom: 8,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+    height: 50,
+    padding: 4,
   },
   toggleOption: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'center',
+    borderRadius: 6,
   },
   leftToggleOption: {
-    justifyContent: 'flex-end',
-    paddingRight: 20,
+    marginRight: 2,
   },
   rightToggleOption: {
-    justifyContent: 'flex-start',
-    paddingLeft: 20,
+    marginLeft: 2,
   },
   activeToggle: {
-    backgroundColor: 'transparent',
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  },
+  iconContainer: {
+    marginRight: 8,
   },
   toggleText: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     color: '#777',
   },
   activeToggleText: {
     color: '#00B2FF',
-    fontWeight: '700',
-  },
-  iconContainer: {
-    width: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  activeImage: {
-    tintColor: '#00B2FF',
+    fontWeight: '600',
   },
   underlineContainer: {
     position: 'relative',
-    width: '80%',
-    maxWidth: 500,
-    height: 4,
+    height: 2,
+    marginTop: 2,
   },
   underline: {
     position: 'absolute',
-    width: '50%',
-    height: 3,
+    width: '20%',
+    height: 2,
     backgroundColor: '#00B2FF',
-    borderRadius: 3,
-    transform: [{ translateX: -50 }],
-  },
+    borderRadius: 1,
+    transform: [{translateX: -20}],
+  }
 });
 
 export default ToggleTabs; 

@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>156043387950-nogamdcbcn8bdn3snn8m1gu9a4btc31f.apps.googleusercontent.com</string>
+	<string>156043387950-pn4nvtug88tptnrfg4l36mi6lplauc2t.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.156043387950-nogamdcbcn8bdn3snn8m1gu9a4btc31f</string>
+	<string>com.googleusercontent.apps.156043387950-pn4nvtug88tptnrfg4l36mi6lplauc2t</string>
 	<key>API_KEY</key>
 	<string>AIzaSyCsfpmDYvu9AUH4gGEAQi26ODoO9SkDdKg</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>org.reactjs.native.example.SmartMealClub</string>
+	<string>com.yuumi.app</string>
 	<key>PROJECT_ID</key>
 	<string>yuumi-4606b</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:156043387950:ios:4e7b0fddfb03bbaedc2bbf</string>
+	<string>1:156043387950:ios:360e8ab3c220ef0bdc2bbf</string>
 </dict>
 </plist>

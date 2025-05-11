@@ -126,6 +126,10 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'search.popularCategories': 'Popüler Kategoriler',
     'search.results': 'Arama Sonuçları',
     'search.noResults': 'Sonuç bulunamadı',
+    'search.notFound': 'Aradığın ürünü bulamadık',
+    'search.noRecentSearches': 'Henüz arama yapmadınız',
+    'search.category': 'Kategori',
+    'search.restaurant': 'Restoran',
     
     // Orders Screen
     'orders.pastOrders': 'Geçmiş Siparişler',
@@ -136,6 +140,19 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'orders.noOrdersYet': 'Henüz siparişiniz bulunmamaktadır.',
     'orders.noActiveOrders': 'Şu anda aktif siparişiniz bulunmamaktadır.',
     'orders.orderNow': 'Hemen Sipariş Ver',
+
+    // New translations for Turkish
+    'profile.notificationSettings': 'İletişim Tercihlerim',
+    'notifications.settings': 'İletişim Tercihlerim',
+    'notifications.email': 'E-posta',
+    'notifications.emailDescription': 'Kampanyalarla ilgili e-posta almak istiyorum.',
+    'notifications.push': 'Bildirim',
+    'notifications.pushDescription': 'Kampanyalarla ilgili bildirim almak istiyorum.',
+    'notifications.sms': 'SMS',
+    'notifications.smsDescription': 'Kampanyalarla ilgili SMS almak istiyorum.',
+    'notifications.phone': 'Telefon',
+    'notifications.phoneDescription': 'Kampanyalarla ilgili cep telefonumdan aranmak istiyorum.',
+    'notifications.disclaimer': '*Kampanyalarla ilgili iletişim tercihlerini kapattığında siparişlerin ve üyelik ayarlarınla ilgili e-posta / bildirim almaya devam edersin.',
   },
 
   en: {
@@ -225,6 +242,10 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'search.popularCategories': 'Popular Categories',
     'search.results': 'Search Results',
     'search.noResults': 'No results found',
+    'search.notFound': 'We couldn\'t find what you\'re looking for',
+    'search.noRecentSearches': 'You haven\'t made any searches yet',
+    'search.category': 'Category',
+    'search.restaurant': 'Restaurant',
     
     // Orders Screen
     'orders.pastOrders': 'Past Orders',
@@ -235,6 +256,19 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'orders.noOrdersYet': 'You have no orders yet.',
     'orders.noActiveOrders': 'You have no active orders at the moment.',
     'orders.orderNow': 'Order Now',
+
+    // New translations for English
+    'profile.notificationSettings': 'My Communication Preferences',
+    'notifications.settings': 'Communication Preferences',
+    'notifications.email': 'Email',
+    'notifications.emailDescription': 'I want to receive emails about campaigns.',
+    'notifications.push': 'Push Notifications',
+    'notifications.pushDescription': 'I want to receive push notifications about campaigns.',
+    'notifications.sms': 'SMS',
+    'notifications.smsDescription': 'I want to receive SMS messages about campaigns.',
+    'notifications.phone': 'Phone',
+    'notifications.phoneDescription': 'I want to be contacted via my mobile phone about campaigns.',
+    'notifications.disclaimer': '*When you turn off communication preferences related to campaigns, you will continue to receive emails/notifications about your orders and membership settings.',
   },
 };
 

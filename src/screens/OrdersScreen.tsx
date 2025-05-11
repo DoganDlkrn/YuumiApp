@@ -149,6 +149,7 @@ export default function OrdersScreen() {
       <View style={styles.bottomTabBar}>
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Home')}
         >
           <Image source={restaurantIcon} style={styles.tabIcon} />
@@ -157,13 +158,17 @@ export default function OrdersScreen() {
         
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Search')}
         >
           <Image source={searchIcon} style={styles.tabIcon} />
           <Text style={styles.tabLabel}>{t('tabs.search')}</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
+        <TouchableOpacity 
+          style={[styles.tabItem, styles.activeTabItem]}
+          activeOpacity={1.0}
+        >
           <Image source={orderIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
           <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.orders')}</Text>
           <View style={styles.activeIndicator} />
@@ -171,6 +176,7 @@ export default function OrdersScreen() {
         
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Profile')}
         >
           <Image source={userIcon} style={styles.tabIcon} />

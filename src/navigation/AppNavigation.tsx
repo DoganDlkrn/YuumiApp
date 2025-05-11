@@ -10,6 +10,7 @@ import OrdersScreen from "../screens/OrdersScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import LanguageScreen from "../screens/LanguageScreen";
+import NotificationSettingsScreen from "../screens/NotificationSettingsScreen";
 import { useLanguage } from "../context/LanguageContext";
 
 export interface Meal {
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Profile: undefined;
   EditProfile: undefined;
   Language: undefined;
+  NotificationSettings: undefined;
   MenuSelection: { orderType: "weekly" | "daily" };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
@@ -45,7 +47,8 @@ const defaultTranslations = {
   'profile.profileInfo': 'Profil Bilgileri',
   'menu.selection': 'Yemek Seçimi',
   'order.summary': 'Sipariş Özeti',
-  'payment.screen': 'Ödeme Ekranı'
+  'payment.screen': 'Ödeme Ekranı',
+  'notifications.settings': 'İletişim Tercihlerim'
 };
 
 export default function AppNavigator() {
@@ -154,6 +157,14 @@ export default function AppNavigator() {
         component={LanguageScreen}
         options={{ 
           title: t('profile.language'),
+          animationEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="NotificationSettings"
+        component={NotificationSettingsScreen}
+        options={{ 
+          title: t('notifications.settings') || 'Bildirim Ayarları',
           animationEnabled: true,
         }}
       />

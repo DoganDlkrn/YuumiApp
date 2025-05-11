@@ -18,6 +18,7 @@ import { RootStackParamList } from "../navigation/AppNavigation";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
+import Svg, { G, Path } from "react-native-svg";
 
 // Import images
 const searchIcon: ImageSourcePropType = require('../assets/search-interface-symbol.png');
@@ -48,7 +49,7 @@ export default function ProfileScreen() {
     {
       title: t('profile.preferences'),
       items: [
-        { title: t('profile.notifications'), screen: 'Notifications' },
+        { title: t('profile.notificationSettings'), screen: 'NotificationSettings' },
         { title: t('profile.language'), screen: 'Language', badge: currentLanguage.flag },
       ]
     },
@@ -104,6 +105,7 @@ export default function ProfileScreen() {
                       styles.settingsItem,
                       item.isLogout && styles.logoutItem
                     ]}
+                    activeOpacity={1.0}
                     onPress={() => {
                       if (item.screen === 'Logout') {
                         Alert.alert(
@@ -159,6 +161,7 @@ export default function ProfileScreen() {
       <View style={styles.bottomTabBar}>
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Home' as never)}
         >
           <Image source={restaurantIcon} style={styles.tabIcon} />
@@ -167,6 +170,7 @@ export default function ProfileScreen() {
         
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Search' as never)}
         >
           <Image source={searchIcon} style={styles.tabIcon} />
@@ -175,13 +179,17 @@ export default function ProfileScreen() {
         
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Orders' as never)}
         >
           <Image source={orderIcon} style={styles.tabIcon} />
           <Text style={styles.tabLabel}>{t('tabs.orders')}</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
+        <TouchableOpacity 
+          style={[styles.tabItem, styles.activeTabItem]}
+          activeOpacity={1.0}
+        >
           <Image source={userIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
           <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.profile')}</Text>
           <View style={styles.activeIndicator} />

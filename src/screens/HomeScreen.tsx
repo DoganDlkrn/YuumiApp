@@ -9,7 +9,8 @@ import {
   ScrollView,
   TextInput,
   Image,
-  ImageSourcePropType
+  ImageSourcePropType,
+  ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -17,6 +18,7 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { Svg, Path, Rect, G, Text as SvgText, Circle, Line, Polyline } from 'react-native-svg';
 import { useLanguage } from "../context/LanguageContext";
+import { getAllRestaurants, Restaurant } from '../services/RestaurantService';
 
 // Import images
 const menuIcon: ImageSourcePropType = require('../assets/images/menu.png');
@@ -40,6 +42,8 @@ export default function HomeScreen() {
   const [orderType, setOrderType] = useState<"weekly" | "daily">("weekly");
   const [searchText, setSearchText] = useState("");
   const { t, language } = useLanguage();
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Force status bar to be light-content and make it visible on iOS
   useEffect(() => {
@@ -52,6 +56,23 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Fetch restaurants from Firestore
+  useEffect(() => {
+    const fetchRestaurants = async () => {
+      try {
+        setLoading(true);
+        const restaurantsData = await getAllRestaurants();
+        setRestaurants(restaurantsData);
+      } catch (error) {
+        console.error('Error fetching restaurants:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchRestaurants();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor="#00B2FF" />
@@ -60,17 +81,18 @@ export default function HomeScreen() {
       <View style={styles.headerSection}>
         {/* Top Navigation Bar */}
         <View style={styles.topNavBar}>
-          <TouchableOpacity style={styles.menuButton}>
-            <Image source={menuIcon} style={styles.menuIcon} />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.locationContainer}>
+          <TouchableOpacity style={styles.locationContainer} activeOpacity={1.0}>
             <Image source={locationIcon} style={styles.locationIcon} />
             <Text style={styles.locationText}>{t('location.select')}</Text>
             <Text style={styles.locationArrow}>▼</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.cartButton}>
+          <View style={styles.placeholder} />
+
+          <TouchableOpacity 
+            style={styles.cartButton}
+            activeOpacity={1.0}
+          >
             <Image source={cartIcon} style={styles.cartIcon} />
           </TouchableOpacity>
         </View>
@@ -90,7 +112,7 @@ export default function HomeScreen() {
         </View>
 
         {/* AI Question Section */}
-        <TouchableOpacity style={styles.aiQuestionContainer}>
+        <TouchableOpacity style={styles.aiQuestionContainer} activeOpacity={1.0}>
           <Image source={aiIcon} style={styles.aiQuestionIcon} />
           <Text style={styles.aiQuestionText}>{t('ai.askQuestion')}</Text>
         </TouchableOpacity>
@@ -108,6 +130,7 @@ export default function HomeScreen() {
                   styles.leftToggleOption,
                   orderType === "weekly" && styles.activeToggle
                 ]}
+                activeOpacity={1.0}
                 onPress={() => setOrderType("weekly")}
               >
                 <View style={styles.iconContainer}>
@@ -132,6 +155,7 @@ export default function HomeScreen() {
                   styles.rightToggleOption,
                   orderType === "daily" && styles.activeToggle
                 ]}
+                activeOpacity={1.0}
                 onPress={() => setOrderType("daily")}
               >
                 <View style={styles.iconContainer}>
@@ -162,7 +186,7 @@ export default function HomeScreen() {
                 {key: 'drinks', label: t('category.drinks')},
                 {key: 'breakfast', label: t('category.breakfast')}
               ].map((category, index) => (
-                <TouchableOpacity key={index} style={styles.categoryItem}>
+                <TouchableOpacity key={index} style={styles.categoryItem} activeOpacity={1.0}>
                   <Text style={styles.categoryText}>{category.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -172,21 +196,32 @@ export default function HomeScreen() {
           {/* Restaurants */}
           <View style={styles.restaurantsContainer}>
             <Text style={styles.sectionTitle}>{t('home.popularRestaurants')}</Text>
-            {['Restoran A', 'Restoran B', 'Restoran C'].map((restaurant, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.restaurantItem}
-                onPress={() => navigation.navigate("MenuSelection", { orderType })}
-              >
-                <View style={styles.restaurantImagePlaceholder}>
-                  <Image source={restaurantIcon} style={styles.restaurantImage} />
-                </View>
-                <View style={styles.restaurantInfo}>
-                  <Text style={styles.restaurantName}>{restaurant}</Text>
-                  <Text style={styles.restaurantDescription}>{t('restaurant.tastyFood')}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {loading ? (
+              <ActivityIndicator color="#00B2FF" size="large" style={styles.loader} />
+            ) : restaurants.length > 0 ? (
+              restaurants.map((restaurant) => (
+                <TouchableOpacity
+                  key={restaurant.id}
+                  style={styles.restaurantItem}
+                  activeOpacity={1.0}
+                  onPress={() => navigation.navigate("MenuSelection", { orderType })}
+                >
+                  <View style={styles.restaurantImagePlaceholder}>
+                    {restaurant.logoUrl ? (
+                      <Image source={{ uri: restaurant.logoUrl }} style={styles.restaurantImage} />
+                    ) : (
+                      <Image source={restaurantIcon} style={styles.restaurantImage} />
+                    )}
+                  </View>
+                  <View style={styles.restaurantInfo}>
+                    <Text style={styles.restaurantName}>{restaurant.isim}</Text>
+                    <Text style={styles.restaurantDescription}>{restaurant.kategori}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.noRestaurants}>{t('restaurant.none')}</Text>
+            )}
           </View>
 
           {/* Bottom spacing */}
@@ -196,7 +231,7 @@ export default function HomeScreen() {
 
       {/* Bottom Tab Bar */}
       <View style={styles.bottomTabBar}>
-        <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]}>
+        <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]} activeOpacity={1.0}>
           <Image source={restaurantIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
           <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.food')}</Text>
           <View style={styles.activeIndicator} />
@@ -204,6 +239,7 @@ export default function HomeScreen() {
         
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Search')}
         >
           <Image source={searchIcon} style={styles.tabIcon} />
@@ -212,6 +248,7 @@ export default function HomeScreen() {
         
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Orders')}
         >
           <Image source={orderIcon} style={styles.tabIcon} />
@@ -220,6 +257,7 @@ export default function HomeScreen() {
         
         <TouchableOpacity 
           style={styles.tabItem}
+          activeOpacity={1.0}
           onPress={() => navigation.navigate('Profile')}
         >
           <Image source={userIcon} style={styles.tabIcon} />
@@ -530,5 +568,16 @@ const styles = StyleSheet.create({
   activeTabLabel: {
     color: '#00B2FF',
     fontWeight: '500',
+  },
+  loader: {
+    marginVertical: 20,
+  },
+  noRestaurants: {
+    textAlign: 'center',
+    paddingVertical: 20,
+    color: '#777',
+  },
+  placeholder: {
+    width: 30,
   },
 });

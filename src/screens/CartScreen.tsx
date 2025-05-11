@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -30,10 +30,63 @@ type CartScreenNavProp = StackNavigationProp<RootStackParamList, 'Cart'>;
 
 export default function CartScreen() {
   const navigation = useNavigation() as CartScreenNavProp;
-  const { items, removeItem, getTotal, clearCart } = useCart();
+  const { items, removeItem, getTotal, clearCart, addItem, debugCart } = useCart();
   const { t } = useLanguage();
   const { theme } = useTheme();
   const styles = theme === 'dark' ? darkStyles : lightStyles;
+  const [refreshCart, setRefreshCart] = useState(0);
+
+  // Debug cart contents when screen is focused
+  useEffect(() => {
+    console.log("CartScreen mounted - debugging cart contents:");
+    debugCart();
+    
+    // Force refresh immediately when screen mounts
+    setRefreshCart(prev => prev + 1);
+    
+    // Then refresh every 1 second to ensure cart updates are visible
+    const intervalId = setInterval(() => {
+      setRefreshCart(prev => prev + 1);
+    }, 1000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Group items by restaurant - simplified to avoid duplicate counting
+  const groupedItems = React.useMemo(() => {
+    console.log(`Regrouping items - current cart has ${items.length} items`);
+    const groups: { [restaurantId: string]: CartItem[] } = {};
+    
+    // Create a map to track added items by ID to avoid duplicates
+    const addedItems = new Map<string, CartItem>();
+    
+    items.forEach(item => {
+      // If this is a new restaurant, initialize its array
+      if (!groups[item.restaurantId]) {
+        groups[item.restaurantId] = [];
+      }
+      
+      // Check if we've already added this item ID
+      if (addedItems.has(item.id)) {
+        // If this item already exists, just update its quantity
+        const existingItem = addedItems.get(item.id)!;
+        existingItem.quantity = (existingItem.quantity || 0) + (item.quantity || 1);
+      } else {
+        // This is a new item, add it to both the group and our tracking map
+        const newItem = {...item};
+        groups[item.restaurantId].push(newItem);
+        addedItems.set(item.id, newItem);
+      }
+    });
+    
+    // Debug the grouped items
+    console.log(`Grouped items into ${Object.keys(groups).length} restaurants`);
+    Object.keys(groups).forEach(restaurantId => {
+      console.log(`Restaurant ${restaurantId} has ${groups[restaurantId].length} unique items`);
+    });
+    
+    return groups;
+  }, [items, refreshCart]);
 
   const handleCheckout = () => {
     if (items.length === 0) {
@@ -52,7 +105,7 @@ export default function CartScreen() {
           text: t('cart.checkout'),
           onPress: () => {
             // Process checkout logic here
-            Alert.alert('Success', 'Order placed successfully');
+            Alert.alert('Başarılı', 'Siparişiniz alınmıştır.');
             clearCart();
             navigation.navigate('Home');
           }
@@ -61,28 +114,74 @@ export default function CartScreen() {
     );
   };
 
-  const renderCartItem = ({ item }: { item: CartItem }) => (
-    <View style={styles.cartItem}>
-      <View style={styles.cartItemInfo}>
-        <Text style={styles.cartItemName}>{item.name}</Text>
-        <Text style={styles.cartItemRestaurant}>{item.restaurantName}</Text>
-        <View style={styles.cartItemPriceRow}>
-          <Text style={styles.cartItemPrice}>{item.price} ₺</Text>
-          <Text style={styles.cartItemQuantity}>x {item.quantity}</Text>
+  // Handle incrementing item quantity
+  const handleIncrement = (item: CartItem) => {
+    console.log(`Incrementing item: ${item.name}`);
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      restaurantId: item.restaurantId,
+      restaurantName: item.restaurantName
+    });
+    setRefreshCart(prev => prev + 1);
+  };
+
+  const renderRestaurantSection = ({ restaurantId, items }: { restaurantId: string, items: CartItem[] }) => {
+    // Find the first item for restaurant name
+    const restaurantName = items[0]?.restaurantName || '';
+    
+    return (
+      <View style={styles.restaurantSection} key={restaurantId}>
+        <Text style={styles.restaurantName}>{restaurantName}</Text>
+        
+        {items.map(item => (
+          <View style={styles.cartItem} key={`${item.id}-${item.quantity}`}>
+            <View style={styles.cartItemInfo}>
+              <Text style={styles.cartItemName}>{item.name}</Text>
+              <View style={styles.cartItemPriceRow}>
+                <Text style={styles.cartItemPrice}>{item.price} ₺</Text>
+                <View style={styles.quantitySelector}>
+                  <TouchableOpacity 
+                    style={styles.quantityButton}
+                    onPress={() => removeItem(item.id)}
+                  >
+                    <Text style={styles.quantityButtonText}>-</Text>
+                  </TouchableOpacity>
+                  
+                  <Text style={styles.quantityText}>{item.quantity}</Text>
+                  
+                  <TouchableOpacity 
+                    style={styles.quantityButton}
+                    onPress={() => handleIncrement(item)}
+                  >
+                    <Text style={styles.quantityButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+            
+            <View style={styles.itemTotal}>
+              <Text style={styles.itemTotalText}>
+                {(item.price * item.quantity).toFixed(2)} ₺
+              </Text>
+            </View>
+          </View>
+        ))}
+        
+        <View style={styles.restaurantTotal}>
+          <Text style={styles.restaurantTotalText}>Ara Toplam:</Text>
+          <Text style={styles.restaurantTotalAmount}>
+            {items.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2)} ₺
+          </Text>
         </View>
       </View>
-      <TouchableOpacity 
-        style={styles.removeButton}
-        onPress={() => removeItem(item.id)}
-      >
-        <Text style={styles.removeButtonText}>{t('cart.remove')}</Text>
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle={theme === 'dark' ? "light-content" : "dark-content"} backgroundColor={theme === 'dark' ? "#1e88e5" : "#00B2FF"} />
+      <StatusBar barStyle="light-content" backgroundColor="#00B2FF" />
 
       {/* Blue Header Section */}
       <View style={styles.headerSection}>
@@ -93,9 +192,12 @@ export default function CartScreen() {
       <View style={styles.whiteContainer}>
         {items.length > 0 ? (
           <FlatList
-            data={items}
-            renderItem={renderCartItem}
-            keyExtractor={item => item.id}
+            data={Object.keys(groupedItems).map(restaurantId => ({
+              restaurantId,
+              items: groupedItems[restaurantId]
+            }))}
+            renderItem={({ item }) => renderRestaurantSection(item)}
+            keyExtractor={item => item.restaurantId}
             contentContainerStyle={styles.listContent}
             ListFooterComponent={
               <View style={styles.totalSection}>
@@ -105,7 +207,7 @@ export default function CartScreen() {
                   style={styles.checkoutButton}
                   onPress={handleCheckout}
                 >
-                  <Text style={styles.checkoutButtonText}>{t('cart.checkout')}</Text>
+                  <Text style={styles.checkoutButtonText}>Siparişi Tamamla</Text>
                 </TouchableOpacity>
               </View>
             }
@@ -225,16 +327,47 @@ const lightStyles = StyleSheet.create({
   cartItemPriceRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
   cartItemPrice: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
   },
-  cartItemQuantity: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 10,
+  quantitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quantityButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#00B2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  quantityButtonText: {
+    fontSize: 18,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    width: 25,
+    textAlign: 'center',
+  },
+  itemTotal: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    padding: 10,
+  },
+  itemTotalText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
   },
   removeButton: {
     backgroundColor: '#f44336',
@@ -330,6 +463,46 @@ const lightStyles = StyleSheet.create({
     fontSize: 12,
     color: '#aaa',
   },
+  restaurantSection: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    marginBottom: 20,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  restaurantName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#00B2FF',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 8,
+  },
+  restaurantTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1, 
+    borderTopColor: '#eee',
+  },
+  restaurantTotalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#555',
+  },
+  restaurantTotalAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#00B2FF',
+  },
 });
 
 const darkStyles = StyleSheet.create({
@@ -392,16 +565,48 @@ const darkStyles = StyleSheet.create({
   cartItemPriceRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
   cartItemPrice: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#fff',
   },
-  cartItemQuantity: {
-    fontSize: 14,
-    color: '#bbb',
-    marginLeft: 10,
+  quantitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  quantityButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#1e88e5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  quantityButtonText: {
+    fontSize: 18,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  quantityText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    width: 25,
+    textAlign: 'center',
+    color: '#fff',
+  },
+  itemTotal: {
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    padding: 10,
+  },
+  itemTotalText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   removeButton: {
     backgroundColor: '#d32f2f',
@@ -496,5 +701,45 @@ const darkStyles = StyleSheet.create({
   tabLabel: {
     fontSize: 12,
     color: '#777',
+  },
+  restaurantSection: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 10,
+    marginBottom: 20,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  restaurantName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#4fc3f7',
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    paddingBottom: 8,
+  },
+  restaurantTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 8,
+    borderTopWidth: 1, 
+    borderTopColor: '#333',
+  },
+  restaurantTotalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ddd',
+  },
+  restaurantTotalAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4fc3f7',
   },
 }); 

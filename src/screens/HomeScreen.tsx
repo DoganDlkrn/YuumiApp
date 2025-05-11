@@ -20,6 +20,7 @@ import { Svg, Path, Rect, G, Text as SvgText, Circle, Line, Polyline } from 'rea
 import { useLanguage } from "../context/LanguageContext";
 import { getAllRestaurants, Restaurant } from '../services/RestaurantService';
 import { useCart } from "../context/CartContext";
+import { useLocation } from '../context/LocationContext';
 
 // Import images
 const menuIcon: ImageSourcePropType = require('../assets/images/menu.png');
@@ -47,11 +48,19 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const { getItemsCount } = useCart();
   const [cartItemsCount, setCartItemsCount] = useState(0);
+  const { selectedAddress, addresses, currentLocation } = useLocation();
 
   // Safely access cart items count
   useEffect(() => {
     try {
-      setCartItemsCount(getItemsCount());
+      const intervalId = setInterval(() => {
+        // Update cart count every second
+        const count = getItemsCount();
+        console.log(`HomeScreen: Cart count update: ${count}`);
+        setCartItemsCount(count);
+      }, 1000);
+      
+      return () => clearInterval(intervalId);
     } catch (error) {
       console.error("Error getting cart items count:", error);
       setCartItemsCount(0);
@@ -94,9 +103,19 @@ export default function HomeScreen() {
       <View style={styles.headerSection}>
         {/* Top Navigation Bar */}
         <View style={styles.topNavBar}>
-          <TouchableOpacity style={styles.locationContainer} activeOpacity={1.0}>
+          <TouchableOpacity 
+            style={styles.locationContainer} 
+            activeOpacity={1.0}
+            onPress={() => navigation.navigate('Addresses')}
+          >
             <Image source={locationIcon} style={styles.locationIcon} />
-            <Text style={styles.locationText}>{t('location.select')}</Text>
+            <Text style={styles.locationText}>
+              {selectedAddress 
+                ? selectedAddress.name 
+                : addresses.length > 0 
+                  ? t('location.select') 
+                  : t('location.add')}
+            </Text>
             <Text style={styles.locationArrow}>▼</Text>
           </TouchableOpacity>
 
@@ -105,7 +124,10 @@ export default function HomeScreen() {
           <TouchableOpacity 
             style={styles.cartButton}
             activeOpacity={1.0}
-            onPress={() => navigation.navigate('Cart')}
+            onPress={() => {
+              console.log("Navigating to Cart from HomeScreen");
+              navigation.navigate('Cart');
+            }}
           >
             <Image source={cartIcon} style={styles.cartIcon} />
             {cartItemsCount > 0 && (

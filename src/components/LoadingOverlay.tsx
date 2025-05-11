@@ -5,11 +5,13 @@ import YLogo from './YLogo';
 interface LoadingOverlayProps {
   visible: boolean;
   message?: string;
+  transparent?: boolean;
 }
 
 const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ 
   visible, 
-  message = 'Yükleniyor'
+  message = 'Yükleniyor',
+  transparent = false 
 }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -104,7 +106,10 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = ({
   if (isHidden) return null;
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <Animated.View style={[
+      styles.container, 
+      { opacity: fadeAnim, backgroundColor: transparent ? 'transparent' : 'rgba(0, 0, 0, 0.7)' }
+    ]}>
       <Animated.View style={[styles.logoContainer, { transform: [{ scale: scaleAnim }] }]}>
         {/* Logo and brand identity */}
         <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>

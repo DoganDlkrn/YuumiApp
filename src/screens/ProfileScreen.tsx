@@ -19,12 +19,13 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import Svg, { G, Path } from "react-native-svg";
+import { useLocation } from '../context/LocationContext';
 
 // Import images
-const searchIcon: ImageSourcePropType = require('../assets/search-interface-symbol.png');
-const restaurantIcon: ImageSourcePropType = require('../assets/restaurant.png');
-const orderIcon: ImageSourcePropType = require('../assets/order.png');
-const userIcon: ImageSourcePropType = require('../assets/user.png');
+const searchIcon: ImageSourcePropType = require('../assets/images/search-interface-symbol.png');
+const restaurantIcon: ImageSourcePropType = require('../assets/images/restaurant.png');
+const orderIcon: ImageSourcePropType = require('../assets/images/order.png');
+const userIcon: ImageSourcePropType = require('../assets/images/user.png');
 
 type ProfileScreenNavProp = StackNavigationProp<RootStackParamList, "Profile">;
 
@@ -195,6 +196,25 @@ export default function ProfileScreen() {
           <View style={styles.activeIndicator} />
         </TouchableOpacity>
       </View>
+
+      {/* Profile Options */}
+      <View style={styles.profileOptionsContainer}>
+        <TouchableOpacity
+          style={styles.profileOptionItem}
+          onPress={() => navigation.navigate('Addresses')}
+        >
+          <Image
+            source={require('../assets/images/placeholder.png')}
+            style={styles.menuItemIcon}
+          />
+          <Text style={styles.profileOptionText}>
+            {t('profile.addresses') || 'Adreslerim'}
+          </Text>
+          <Text style={styles.profileOptionArrow}>›</Text>
+        </TouchableOpacity>
+        
+        {/* ... the rest of your existing profile options ... */}
+      </View>
     </SafeAreaView>
   );
 }
@@ -356,7 +376,31 @@ const lightStyles = StyleSheet.create({
     backgroundColor: '#00B2FF',
     borderTopLeftRadius: 1.5,
     borderTopRightRadius: 1.5,
-  }
+  },
+  menuItemIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 10,
+    tintColor: '#00B2FF',
+  },
+  profileOptionsContainer: {
+    padding: 16,
+  },
+  profileOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  profileOptionText: {
+    fontSize: 15,
+    color: '#333',
+    flex: 1,
+  },
+  profileOptionArrow: {
+    color: '#bbb',
+    fontSize: 22,
+    marginLeft: 8,
+  },
 });
 
 const darkStyles = StyleSheet.create({
@@ -516,5 +560,29 @@ const darkStyles = StyleSheet.create({
     backgroundColor: '#1e88e5',
     borderTopLeftRadius: 1.5,
     borderTopRightRadius: 1.5,
-  }
+  },
+  menuItemIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 10,
+    tintColor: '#64b5f6',
+  },
+  profileOptionsContainer: {
+    padding: 16,
+  },
+  profileOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  profileOptionText: {
+    fontSize: 15,
+    color: '#eee',
+    flex: 1,
+  },
+  profileOptionArrow: {
+    color: '#777',
+    fontSize: 22,
+    marginLeft: 8,
+  },
 }); 

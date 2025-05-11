@@ -1,18 +1,24 @@
 import React, { useContext } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
-import HomeScreen from "../screens/HomeScreen";
-import MenuSelectionScreen from "../screens/MenuSelectionScreen";
-import OrderSummaryScreen from "../screens/OrderSummaryScreen";
-import PaymentScreen from "../screens/PaymentScreen";
-import LoginScreen from "../screens/LoginScreen";
-import SearchScreen from "../screens/SearchScreen";
-import OrdersScreen from "../screens/OrdersScreen";
-import ProfileScreen from "../screens/ProfileScreen";
-import EditProfileScreen from "../screens/EditProfileScreen";
-import LanguageScreen from "../screens/LanguageScreen";
-import NotificationSettingsScreen from "../screens/NotificationSettingsScreen";
-import CartScreen from "../screens/CartScreen";
+import {
+  HomeScreen,
+  MenuSelectionScreen,
+  OrderSummaryScreen,
+  PaymentScreen,
+  LoginScreen,
+  SearchScreen,
+  OrdersScreen,
+  ProfileScreen,
+  EditProfileScreen,
+  LanguageScreen,
+  NotificationSettingsScreen,
+  CartScreen,
+  AddressesScreen,
+  AddressScreen,
+  MapScreen
+} from "../screens";
 import { useLanguage } from "../context/LanguageContext";
+import { Address } from "../context/LocationContext";
 
 export interface Meal {
   id: string;
@@ -30,6 +36,9 @@ export type RootStackParamList = {
   Language: undefined;
   NotificationSettings: undefined;
   Cart: undefined;
+  Addresses: undefined;
+  Address: { addressId?: string; address?: Address; location?: { latitude: number; longitude: number; address?: string } };
+  Map: { currentLocation?: { latitude?: number; longitude?: number } };
   MenuSelection: { orderType: "weekly" | "daily"; restaurantId?: string };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
@@ -51,7 +60,10 @@ const defaultTranslations = {
   'order.summary': 'Sipariş Özeti',
   'payment.screen': 'Ödeme Ekranı',
   'notifications.settings': 'İletişim Tercihlerim',
-  'cart.title': 'Sepetim'
+  'cart.title': 'Sepetim',
+  'addresses.title': 'Adreslerim',
+  'address.title': 'Adres Ekle/Düzenle',
+  'map.title': 'Haritada Seç'
 };
 
 export default function AppNavigator() {
@@ -88,23 +100,11 @@ export default function AppNavigator() {
           fontWeight: "bold",
         },
         headerBackTitle: "",
-        animationEnabled: false,
+        animationEnabled: true, // Enabling animations to ensure proper context updates
+        animationTypeForReplace: 'push',
         presentation: 'card',
         cardStyle: { backgroundColor: 'white' },
-        cardOverlayEnabled: false,
-        detachPreviousScreen: false,
-        freezeOnBlur: true,
-        gestureEnabled: false,
-        animationTypeForReplace: 'pop',
-        cardStyleInterpolator: () => ({
-          cardStyle: {
-            opacity: 1,
-            transform: [{ translateX: 0 }, { translateY: 0 }]
-          },
-          overlayStyle: {
-            opacity: 0
-          }
-        })
+        cardOverlayEnabled: false
       }}
     >
       <Stack.Screen
@@ -176,6 +176,30 @@ export default function AppNavigator() {
         component={CartScreen}
         options={{ 
           title: t('cart.title'),
+          animationEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="Addresses"
+        component={AddressesScreen}
+        options={{ 
+          title: t('addresses.title') || 'Adreslerim',
+          animationEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="Address"
+        component={AddressScreen}
+        options={{ 
+          title: t('address.title') || 'Adres Ekle/Düzenle',
+          animationEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="Map"
+        component={MapScreen}
+        options={{ 
+          title: t('map.title') || 'Haritada Seç',
           animationEnabled: true,
         }}
       />

@@ -15,10 +15,12 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
+  addItemWithQuantity: (item: Omit<CartItem, 'quantity'>, quantity: number) => void;
   removeItem: (itemId: string) => void;
   clearCart: () => void;
   getItemsCount: () => number;
   getTotal: () => number;
+  debugCart: () => void;
 }
 
 // Cart storage key
@@ -35,12 +37,17 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const loadCart = async () => {
       try {
+        console.log("⏳ Loading cart from AsyncStorage...");
         const savedCart = await AsyncStorage.getItem(CART_STORAGE_KEY);
         if (savedCart) {
-          setItems(JSON.parse(savedCart));
+          const parsedCart = JSON.parse(savedCart);
+          console.log(`✅ Cart loaded with ${parsedCart.length} items`);
+          setItems(parsedCart);
+        } else {
+          console.log("🛒 No saved cart found");
         }
       } catch (error) {
-        console.error('Error loading cart:', error);
+        console.error('❌ Error loading cart:', error);
       }
     };
 
@@ -51,9 +58,11 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const saveCart = async () => {
       try {
+        console.log(`💾 Saving cart with ${items.length} items`);
         await AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+        console.log("✅ Cart saved successfully");
       } catch (error) {
-        console.error('Error saving cart:', error);
+        console.error('❌ Error saving cart:', error);
       }
     };
 
@@ -62,6 +71,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Add an item to the cart
   const addItem = (item: Omit<CartItem, 'quantity'>) => {
+    console.log(`➕ Adding item to cart: ${item.name} from ${item.restaurantName}`);
+    
     setItems(currentItems => {
       // Check if item already exists in cart
       const existingItemIndex = currentItems.findIndex(i => i.id === item.id);
@@ -71,12 +82,57 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const updatedItems = [...currentItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + 1
+          quantity: updatedItems[existingItemIndex].quantity + 1,
+          // Ensure these properties are updated in case they've changed
+          name: item.name,
+          price: item.price,
+          restaurantId: item.restaurantId,
+          restaurantName: item.restaurantName
         };
+        console.log(`📝 Updated item quantity to ${updatedItems[existingItemIndex].quantity}`);
         return updatedItems;
       } else {
         // If item doesn't exist, add it with quantity 1
-        return [...currentItems, { ...item, quantity: 1 }];
+        const newItem = { ...item, quantity: 1 };
+        console.log('➕ Adding new item with quantity 1');
+        return [...currentItems, newItem];
+      }
+    });
+  };
+
+  // Add an item with a specific quantity
+  const addItemWithQuantity = (item: Omit<CartItem, 'quantity'>, quantity: number) => {
+    if (quantity <= 0) {
+      console.log("⚠️ Attempted to add item with quantity <= 0, ignoring");
+      return;
+    }
+    
+    console.log(`➕ Adding ${quantity} of ${item.name} to cart`);
+    
+    setItems(currentItems => {
+      // Check if item already exists in cart
+      const existingItemIndex = currentItems.findIndex(i => i.id === item.id);
+      
+      if (existingItemIndex >= 0) {
+        // If item exists, update its quantity
+        const updatedItems = [...currentItems];
+        updatedItems[existingItemIndex] = {
+          ...updatedItems[existingItemIndex],
+          // Replace quantity instead of adding to it
+          quantity: quantity,
+          // Ensure these properties are updated in case they've changed
+          name: item.name,
+          price: item.price,
+          restaurantId: item.restaurantId,
+          restaurantName: item.restaurantName
+        };
+        console.log(`📝 Set item quantity to ${quantity}`);
+        return updatedItems;
+      } else {
+        // If item doesn't exist, add it with the specified quantity
+        const newItem = { ...item, quantity };
+        console.log(`➕ Adding new item with quantity ${quantity}`);
+        return [...currentItems, newItem];
       }
     });
   };
@@ -124,14 +180,32 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return items.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
+  // Debug cart contents
+  const debugCart = () => {
+    console.log("🛒 CART DEBUG 🛒");
+    console.log(`Total items in cart: ${items.length}`);
+    
+    if (items.length > 0) {
+      console.log("Items:");
+      items.forEach((item, index) => {
+        console.log(`${index + 1}. ${item.name} (${item.quantity}x) - ${item.price} ₺ - From: ${item.restaurantName}`);
+      });
+      console.log(`Total: ${getTotal().toFixed(2)} ₺`);
+    } else {
+      console.log("Cart is empty");
+    }
+  };
+
   // Context value
   const value: CartContextType = {
     items,
     addItem,
+    addItemWithQuantity,
     removeItem,
     clearCart,
     getItemsCount,
-    getTotal
+    getTotal,
+    debugCart
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
@@ -145,10 +219,12 @@ export const useCart = () => {
     return {
       items: [],
       addItem: () => {},
+      addItemWithQuantity: () => {},
       removeItem: () => {},
       clearCart: () => {},
       getItemsCount: () => 0,
-      getTotal: () => 0
+      getTotal: () => 0,
+      debugCart: () => {}
     };
   }
   return context;

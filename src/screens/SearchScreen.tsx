@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   View,
   Text,
@@ -47,15 +47,15 @@ export default function SearchScreen() {
   const [loading, setLoading] = useState(false);
   const { t, language } = useLanguage();
   
-  // Categories should be localized depending on language
-  const categories = [
+  // Memoize categories to prevent recreation on every render
+  const categories = useMemo(() => [
     t('category.pizza'),
     t('category.burger'),
     t('category.kebap'),
     t('category.dessert'),
     t('category.drinks'),
     t('category.breakfast')
-  ];
+  ], [t, language]);
 
   // Load saved recent searches from AsyncStorage on component mount
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function SearchScreen() {
     } else {
       setSearchResults([]);
     }
-  }, [searchText, categories, restaurants]);
+  }, [searchText, restaurants, categories]);
 
   // Save a search term to recent searches
   const saveToRecentSearches = async (term: string) => {

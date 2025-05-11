@@ -28,7 +28,7 @@ export type RootStackParamList = {
   EditProfile: undefined;
   Language: undefined;
   NotificationSettings: undefined;
-  MenuSelection: { orderType: "weekly" | "daily" };
+  MenuSelection: { orderType: "weekly" | "daily"; restaurantId?: string };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
     selectedMeals: Meal[];

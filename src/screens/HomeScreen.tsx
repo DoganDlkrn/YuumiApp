@@ -19,6 +19,7 @@ import { RootStackParamList } from "../navigation/AppNavigation";
 import { Svg, Path, Rect, G, Text as SvgText, Circle, Line, Polyline } from 'react-native-svg';
 import { useLanguage } from "../context/LanguageContext";
 import { getAllRestaurants, Restaurant } from '../services/RestaurantService';
+import { useCart } from "../context/CartContext";
 
 // Import images
 const menuIcon: ImageSourcePropType = require('../assets/images/menu.png');
@@ -44,6 +45,18 @@ export default function HomeScreen() {
   const { t, language } = useLanguage();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getItemsCount } = useCart();
+  const [cartItemsCount, setCartItemsCount] = useState(0);
+
+  // Safely access cart items count
+  useEffect(() => {
+    try {
+      setCartItemsCount(getItemsCount());
+    } catch (error) {
+      console.error("Error getting cart items count:", error);
+      setCartItemsCount(0);
+    }
+  }, [getItemsCount]);
 
   // Force status bar to be light-content and make it visible on iOS
   useEffect(() => {
@@ -92,23 +105,27 @@ export default function HomeScreen() {
           <TouchableOpacity 
             style={styles.cartButton}
             activeOpacity={1.0}
+            onPress={() => navigation.navigate('Cart')}
           >
             <Image source={cartIcon} style={styles.cartIcon} />
+            {cartItemsCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartItemsCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
         {/* Search Section */}
         <View style={styles.searchSection}>
-          <View style={styles.searchContainer}>
+          <TouchableOpacity 
+            style={styles.searchContainer}
+            activeOpacity={1.0}
+            onPress={() => navigation.navigate('Search')}
+          >
             <Image source={searchIcon} style={styles.searchIcon} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder={t('search.placeholder')}
-              placeholderTextColor="#777"
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-          </View>
+            <Text style={styles.searchPlaceholder}>{t('search.placeholder')}</Text>
+          </TouchableOpacity>
         </View>
 
         {/* AI Question Section */}
@@ -176,17 +193,21 @@ export default function HomeScreen() {
 
           {/* Categories */}
           <View style={styles.categoriesContainer}>
-            <Text style={styles.sectionTitle}>{t('home.categories')}</Text>
+            <Text style={styles.sectionTitle}>{t('home.popularCategories')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
               {[
                 {key: 'pizza', label: t('category.pizza')},
                 {key: 'burger', label: t('category.burger')},
                 {key: 'kebap', label: t('category.kebap')},
-                {key: 'dessert', label: t('category.dessert')},
-                {key: 'drinks', label: t('category.drinks')},
-                {key: 'breakfast', label: t('category.breakfast')}
+                {key: 'cigkofte', label: 'Çiğ Köfte'},
+                {key: 'dessert', label: t('category.dessert')}
               ].map((category, index) => (
-                <TouchableOpacity key={index} style={styles.categoryItem} activeOpacity={1.0}>
+                <TouchableOpacity 
+                  key={index} 
+                  style={styles.categoryItem} 
+                  activeOpacity={1.0}
+                  onPress={() => navigation.navigate('Search', { categoryFilter: category.label })}
+                >
                   <Text style={styles.categoryText}>{category.label}</Text>
                 </TouchableOpacity>
               ))}
@@ -204,18 +225,30 @@ export default function HomeScreen() {
                   key={restaurant.id}
                   style={styles.restaurantItem}
                   activeOpacity={1.0}
-                  onPress={() => navigation.navigate("MenuSelection", { orderType })}
+                  onPress={() => navigation.navigate("MenuSelection", { 
+                    orderType, 
+                    restaurantId: restaurant.id 
+                  })}
                 >
                   <View style={styles.restaurantImagePlaceholder}>
                     {restaurant.logoUrl ? (
                       <Image source={{ uri: restaurant.logoUrl }} style={styles.restaurantImage} />
                     ) : (
-                      <Image source={restaurantIcon} style={styles.restaurantImage} />
+                      <View style={styles.restaurantImageFallback}>
+                        <Text style={styles.restaurantImageFallbackText}>
+                          {restaurant.isim.charAt(0)}
+                        </Text>
+                      </View>
                     )}
                   </View>
                   <View style={styles.restaurantInfo}>
                     <Text style={styles.restaurantName}>{restaurant.isim}</Text>
                     <Text style={styles.restaurantDescription}>{restaurant.kategori}</Text>
+                    {restaurant.adres && (
+                      <Text style={styles.restaurantAddress} numberOfLines={1}>
+                        {restaurant.adres}
+                      </Text>
+                    )}
                   </View>
                 </TouchableOpacity>
               ))
@@ -299,6 +332,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 20,
+    position: 'relative',
   },
   menuIcon: {
     width: 32,
@@ -334,7 +368,6 @@ const styles = StyleSheet.create({
   },
   searchSection: {
     paddingHorizontal: 16,
-    paddingTop: 10,
     paddingBottom: 15,
   },
   searchContainer: {
@@ -349,12 +382,12 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     marginRight: 8,
+    tintColor: '#666',
   },
-  searchInput: {
-    flex: 1,
-    height: 44,
+  searchPlaceholder: {
     fontSize: 16,
-    color: '#333',
+    color: '#777',
+    flex: 1,
   },
   toggleContainer: {
     alignItems: 'center',
@@ -483,36 +516,58 @@ const styles = StyleSheet.create({
   },
   restaurantItem: {
     flexDirection: 'row',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: 'white',
     borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
+    marginBottom: 15,
+    padding: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   restaurantImagePlaceholder: {
-    width: 60,
-    height: 60,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#f0f0f0',
+    marginRight: 12,
   },
   restaurantImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
+    width: 80,
+    height: 80,
+    resizeMode: 'cover',
+  },
+  restaurantImageFallback: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#00B2FF',
+  },
+  restaurantImageFallbackText: {
+    color: 'white',
+    fontSize: 30,
+    fontWeight: 'bold',
   },
   restaurantInfo: {
     flex: 1,
-    marginLeft: 12,
     justifyContent: 'center',
   },
   restaurantName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: '#333',
     marginBottom: 4,
   },
   restaurantDescription: {
     fontSize: 14,
+    color: '#00B2FF',
+    marginBottom: 4,
+  },
+  restaurantAddress: {
+    fontSize: 12,
     color: '#777',
   },
   bottomSpacing: {
@@ -579,5 +634,22 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 30,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#f44336',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

@@ -112,6 +112,7 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'home.categories': 'Kategoriler',
     'home.popularRestaurants': 'Popüler Restoranlar',
     'restaurant.tastyFood': 'Lezzetli yemekler',
+    'home.popularCategories': 'Popüler Kategoriler',
     
     // Categories
     'category.pizza': 'Pizza',
@@ -153,6 +154,15 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'notifications.phone': 'Telefon',
     'notifications.phoneDescription': 'Kampanyalarla ilgili cep telefonumdan aranmak istiyorum.',
     'notifications.disclaimer': '*Kampanyalarla ilgili iletişim tercihlerini kapattığında siparişlerin ve üyelik ayarlarınla ilgili e-posta / bildirim almaya devam edersin.',
+
+    // Cart related
+    'cart.title': 'Sepetim',
+    'cart.empty': 'Sepetiniz boş',
+    'cart.total': 'Toplam',
+    'cart.checkout': 'Ödeme Yap',
+    'cart.remove': 'Kaldır',
+    'cart.added': 'Sepete eklendi',
+    'cart.items': 'ürün',
   },
 
   en: {
@@ -228,6 +238,7 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'home.categories': 'Categories',
     'home.popularRestaurants': 'Popular Restaurants',
     'restaurant.tastyFood': 'Delicious food',
+    'home.popularCategories': 'Popular Categories',
     
     // Categories
     'category.pizza': 'Pizza',
@@ -269,6 +280,15 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'notifications.phone': 'Phone',
     'notifications.phoneDescription': 'I want to be contacted via my mobile phone about campaigns.',
     'notifications.disclaimer': '*When you turn off communication preferences related to campaigns, you will continue to receive emails/notifications about your orders and membership settings.',
+
+    // Cart related
+    'cart.title': 'My Cart',
+    'cart.empty': 'Your cart is empty',
+    'cart.total': 'Total',
+    'cart.checkout': 'Checkout',
+    'cart.remove': 'Remove',
+    'cart.added': 'Added to cart',
+    'cart.items': 'items',
   },
 };
 

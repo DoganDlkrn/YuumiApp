@@ -13,8 +13,8 @@ import {
   ActivityIndicator
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
-import { StackNavigationProp } from "@react-navigation/stack";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { StackNavigationProp, RouteProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { useLanguage } from "../context/LanguageContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -30,6 +30,7 @@ const userIcon: ImageSourcePropType = require('../assets/images/user.png');
 const RECENT_SEARCHES_KEY = '@yuumi_recent_searches';
 
 type SearchScreenNavProp = StackNavigationProp<RootStackParamList, "Search">;
+type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
 
 type SearchResultItem = {
   id: string;
@@ -40,6 +41,7 @@ type SearchResultItem = {
 
 export default function SearchScreen() {
   const navigation = useNavigation() as SearchScreenNavProp;
+  const route = useRoute<SearchScreenRouteProp>();
   const [searchText, setSearchText] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -49,13 +51,19 @@ export default function SearchScreen() {
   
   // Memoize categories to prevent recreation on every render
   const categories = useMemo(() => [
-    t('category.pizza'),
-    t('category.burger'),
-    t('category.kebap'),
-    t('category.dessert'),
-    t('category.drinks'),
-    t('category.breakfast')
-  ], [t, language]);
+    'Pizza',
+    'Burger',
+    'Kebap',
+    'Tatlı',
+    'İçecek',
+    'Kahvaltı',
+    'Türk',
+    'Çin',
+    'İtalyan',
+    'Fast Food',
+    'Sağlıklı',
+    'Vegan'
+  ], []);
 
   // Load saved recent searches from AsyncStorage on component mount
   useEffect(() => {
@@ -89,6 +97,13 @@ export default function SearchScreen() {
     
     fetchRestaurants();
   }, []);
+
+  // Route'dan kategori filtresi parametresini kontrol et
+  useEffect(() => {
+    if (route.params?.categoryFilter) {
+      setSearchText(route.params.categoryFilter);
+    }
+  }, [route.params?.categoryFilter]);
 
   // Update search results when search text changes
   useEffect(() => {
@@ -169,10 +184,17 @@ export default function SearchScreen() {
     // Navigate based on type
     if (item.type === 'category') {
       console.log(`Navigating to category: ${item.name}`);
-      // Navigate to category screen or filter results
+      // Kategori seçildiğinde, kategori adını arama metni olarak ayarla
+      setSearchText(item.name);
+      // Burada direkt olarak bir ekrana yönlendirme yapmak yerine
+      // arama metnini değiştirerek ilgili kategorideki restoranların listelenmesini sağlıyoruz
     } else if (item.type === 'restaurant' && item.data) {
       console.log(`Navigating to restaurant: ${item.name}`);
-      // Navigate to restaurant details
+      // Restoran seçildiğinde, restoran detay sayfasına yönlendir
+      navigation.navigate('MenuSelection', { 
+        orderType: 'daily',
+        restaurantId: item.data.id
+      });
     }
   };
 
@@ -242,22 +264,27 @@ export default function SearchScreen() {
                 
                 {/* Popular Categories */}
                 <View style={styles.categoriesContainer}>
-                  <Text style={styles.sectionTitle}>{t('search.popularCategories')}</Text>
-                  <View style={styles.categoriesGrid}>
-                    {categories.map((category, index) => (
+                  <Text style={styles.sectionTitle}>Kategoriler</Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.categoriesScrollView}
+                    contentContainerStyle={styles.categoriesScrollContent}
+                  >
+                    {['Pizza', 'Burger', 'Kebap', 'Tatlı', 'İçecek', 'Kahvaltı', 'Türk', 'Çin', 'İtalyan', 'Fast Food', 'Sağlıklı', 'Vegan', 'Çiğ Köfte'].map((category, index) => (
                       <TouchableOpacity 
                         key={index} 
-                        style={styles.categoryCard}
+                        style={styles.categoryPill}
                         activeOpacity={1.0}
                         onPress={() => {
                           setSearchText(category);
                           saveToRecentSearches(category);
                         }}
                       >
-                        <Text style={styles.categoryText}>{category}</Text>
+                        <Text style={styles.categoryPillText}>{category}</Text>
                       </TouchableOpacity>
                     ))}
-                  </View>
+                  </ScrollView>
                 </View>
               </>
             ) : (
@@ -453,6 +480,25 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  categoriesScrollView: {
+    marginBottom: 10,
+  },
+  categoriesScrollContent: {
+    paddingVertical: 5,
+    paddingRight: 10,
+  },
+  categoryPill: {
+    backgroundColor: '#f0f0f0',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  categoryPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
   categoryCard: {
     width: '48%',
     backgroundColor: '#f5f5f5',
@@ -574,5 +620,48 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     borderTopLeftRadius: 3,
     borderTopRightRadius: 3,
+  },
+  allRestaurantsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  restaurantCard: {
+    width: '48%',
+    marginBottom: 15,
+  },
+  restaurantImageContainer: {
+    width: '100%',
+    height: 120,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  restaurantCardImage: {
+    width: '100%',
+    height: 120,
+    resizeMode: 'cover',
+  },
+  restaurantImageFallback: {
+    width: '100%',
+    height: 120,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#00B2FF',
+  },
+  restaurantImageFallbackText: {
+    color: 'white',
+    fontSize: 30,
+    fontWeight: 'bold',
+  },
+  restaurantCardName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
+  },
+  restaurantCardCategory: {
+    fontSize: 14,
+    color: '#777',
   },
 }); 

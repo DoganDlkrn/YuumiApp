@@ -11,6 +11,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 import EditProfileScreen from "../screens/EditProfileScreen";
 import LanguageScreen from "../screens/LanguageScreen";
 import NotificationSettingsScreen from "../screens/NotificationSettingsScreen";
+import CartScreen from "../screens/CartScreen";
 import { useLanguage } from "../context/LanguageContext";
 
 export interface Meal {
@@ -22,12 +23,13 @@ export interface Meal {
 export type RootStackParamList = {
   Login: undefined;
   Home: undefined;
-  Search: undefined;
+  Search: { categoryFilter?: string };
   Orders: undefined;
   Profile: undefined;
   EditProfile: undefined;
   Language: undefined;
   NotificationSettings: undefined;
+  Cart: undefined;
   MenuSelection: { orderType: "weekly" | "daily"; restaurantId?: string };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
@@ -48,7 +50,8 @@ const defaultTranslations = {
   'menu.selection': 'Yemek Seçimi',
   'order.summary': 'Sipariş Özeti',
   'payment.screen': 'Ödeme Ekranı',
-  'notifications.settings': 'İletişim Tercihlerim'
+  'notifications.settings': 'İletişim Tercihlerim',
+  'cart.title': 'Sepetim'
 };
 
 export default function AppNavigator() {
@@ -165,6 +168,14 @@ export default function AppNavigator() {
         component={NotificationSettingsScreen}
         options={{ 
           title: t('notifications.settings') || 'Bildirim Ayarları',
+          animationEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="Cart"
+        component={CartScreen}
+        options={{ 
+          title: t('cart.title'),
           animationEnabled: true,
         }}
       />

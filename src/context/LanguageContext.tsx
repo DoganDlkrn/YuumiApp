@@ -105,6 +105,7 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     
     // Home Screen
     'location.select': 'Konum Seç',
+    'location.add': 'Konum Seç',
     'search.placeholder': 'Restoran veya yemek ara...',
     'ai.askQuestion': 'Yapay zekaya soru sor',
     'toggle.weekly': 'Haftalık',
@@ -231,6 +232,7 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     
     // Home Screen
     'location.select': 'Select Location',
+    'location.add': 'Select Location',
     'search.placeholder': 'Search for restaurants or food...',
     'ai.askQuestion': 'Ask AI a question',
     'toggle.weekly': 'Weekly',

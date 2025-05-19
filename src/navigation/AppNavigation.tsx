@@ -15,7 +15,8 @@ import {
   CartScreen,
   AddressesScreen,
   AddressScreen,
-  MapScreen
+  MapScreen,
+  WeeklyPlanScreen
 } from "../screens";
 import { useLanguage } from "../context/LanguageContext";
 import { Address } from "../context/LocationContext";
@@ -45,6 +46,7 @@ export type RootStackParamList = {
     selectedMeals: Meal[];
     planType: "weekly" | "normal";
   };
+  WeeklyPlan: undefined;
 };
 
 const Stack = createStackNavigator();
@@ -225,6 +227,14 @@ export default function AppNavigator() {
         options={{ 
           title: t('payment.screen'),
           animationEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="WeeklyPlan"
+        component={WeeklyPlanScreen}
+        options={{ 
+          title: t('toggle.weekly') || 'Weekly Plan',
+          animationEnabled: true,
         }}
       />
     </Stack.Navigator>

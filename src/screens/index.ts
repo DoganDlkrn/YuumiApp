@@ -13,4 +13,5 @@ export { default as NotificationSettingsScreen } from './NotificationSettingsScr
 export { default as CartScreen } from './CartScreen';
 export { default as AddressesScreen } from './AddressesScreen';
 export { default as AddressScreen } from './AddressScreen';
-export { default as MapScreen } from './MapScreen'; 
+export { default as MapScreen } from './MapScreen';
+export { default as WeeklyPlanScreen } from './WeeklyPlanScreen'; 

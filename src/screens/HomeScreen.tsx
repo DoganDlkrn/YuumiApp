@@ -40,8 +40,8 @@ type HomeScreenNavProp = StackNavigationProp<RootStackParamList, "Home">;
 
 export default function HomeScreen() {
   // useNavigation düzeltildi
-  const navigation = useNavigation() as HomeScreenNavProp;
-  const [orderType, setOrderType] = useState<"weekly" | "daily">("weekly");
+  const navigation = useNavigation<HomeScreenNavProp>();
+  const [orderType, setOrderType] = useState<"weekly" | "daily">("daily");
   const [searchText, setSearchText] = useState("");
   const { t, language } = useLanguage();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -170,7 +170,10 @@ export default function HomeScreen() {
                   orderType === "weekly" && styles.activeToggle
                 ]}
                 activeOpacity={1.0}
-                onPress={() => setOrderType("weekly")}
+                onPress={() => {
+                  setOrderType("weekly");
+                  navigation.navigate('WeeklyPlan');
+                }}
               >
                 <View style={styles.iconContainer}>
                   <Svg width="24" height="24" viewBox="0 0 24 24">
@@ -195,7 +198,9 @@ export default function HomeScreen() {
                   orderType === "daily" && styles.activeToggle
                 ]}
                 activeOpacity={1.0}
-                onPress={() => setOrderType("daily")}
+                onPress={() => {
+                  setOrderType("daily");
+                }}
               >
                 <View style={styles.iconContainer}>
                   <Svg width="24" height="24" viewBox="0 0 24 24">
@@ -213,74 +218,79 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Categories */}
-          <View style={styles.categoriesContainer}>
-            <Text style={styles.sectionTitle}>{t('home.popularCategories')}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-              {[
-                {key: 'pizza', label: t('category.pizza')},
-                {key: 'burger', label: t('category.burger')},
-                {key: 'kebap', label: t('category.kebap')},
-                {key: 'cigkofte', label: 'Çiğ Köfte'},
-                {key: 'dessert', label: t('category.dessert')}
-              ].map((category, index) => (
-                <TouchableOpacity 
-                  key={index} 
-                  style={styles.categoryItem} 
-                  activeOpacity={1.0}
-                  onPress={() => navigation.navigate('Search', { categoryFilter: category.label })}
-                >
-                  <Text style={styles.categoryText}>{category.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+          {/* Display restaurants only when in daily mode */}
+          {orderType === "daily" && (
+            <>
+              {/* Categories */}
+              <View style={styles.categoriesContainer}>
+                <Text style={styles.sectionTitle}>{t('home.popularCategories')}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+                  {[
+                    {key: 'pizza', label: t('category.pizza')},
+                    {key: 'burger', label: t('category.burger')},
+                    {key: 'kebap', label: t('category.kebap')},
+                    {key: 'cigkofte', label: 'Çiğ Köfte'},
+                    {key: 'dessert', label: t('category.dessert')}
+                  ].map((category, index) => (
+                    <TouchableOpacity 
+                      key={index} 
+                      style={styles.categoryItem} 
+                      activeOpacity={1.0}
+                      onPress={() => navigation.navigate('Search', { categoryFilter: category.label })}
+                    >
+                      <Text style={styles.categoryText}>{category.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
 
-          {/* Restaurants */}
-          <View style={styles.restaurantsContainer}>
-            <Text style={styles.sectionTitle}>{t('home.popularRestaurants')}</Text>
-            {loading ? (
-              <ActivityIndicator color="#00B2FF" size="large" style={styles.loader} />
-            ) : restaurants.length > 0 ? (
-              restaurants.map((restaurant) => (
-                <TouchableOpacity
-                  key={restaurant.id}
-                  style={styles.restaurantItem}
-                  activeOpacity={1.0}
-                  onPress={() => navigation.navigate("MenuSelection", { 
-                    orderType, 
-                    restaurantId: restaurant.id 
-                  })}
-                >
-                  <View style={styles.restaurantImagePlaceholder}>
-                    {restaurant.logoUrl ? (
-                      <Image source={{ uri: restaurant.logoUrl }} style={styles.restaurantImage} />
-                    ) : (
-                      <View style={styles.restaurantImageFallback}>
-                        <Text style={styles.restaurantImageFallbackText}>
-                          {restaurant.isim.charAt(0)}
-                        </Text>
+              {/* Restaurants */}
+              <View style={styles.restaurantsContainer}>
+                <Text style={styles.sectionTitle}>{t('home.popularRestaurants')}</Text>
+                {loading ? (
+                  <ActivityIndicator color="#00B2FF" size="large" style={styles.loader} />
+                ) : restaurants.length > 0 ? (
+                  restaurants.map((restaurant) => (
+                    <TouchableOpacity
+                      key={restaurant.id}
+                      style={styles.restaurantItem}
+                      activeOpacity={1.0}
+                      onPress={() => navigation.navigate("MenuSelection", { 
+                        orderType, 
+                        restaurantId: restaurant.id 
+                      })}
+                    >
+                      <View style={styles.restaurantImagePlaceholder}>
+                        {restaurant.logoUrl ? (
+                          <Image source={{ uri: restaurant.logoUrl }} style={styles.restaurantImage} />
+                        ) : (
+                          <View style={styles.restaurantImageFallback}>
+                            <Text style={styles.restaurantImageFallbackText}>
+                              {restaurant.isim.charAt(0)}
+                            </Text>
+                          </View>
+                        )}
                       </View>
-                    )}
-                  </View>
-                  <View style={styles.restaurantInfo}>
-                    <Text style={styles.restaurantName}>{restaurant.isim}</Text>
-                    <Text style={styles.restaurantDescription}>{restaurant.kategori}</Text>
-                    {restaurant.adres && (
-                      <Text style={styles.restaurantAddress} numberOfLines={1}>
-                        {restaurant.adres}
-                      </Text>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <Text style={styles.noRestaurants}>{t('restaurant.none')}</Text>
-            )}
-          </View>
+                      <View style={styles.restaurantInfo}>
+                        <Text style={styles.restaurantName}>{restaurant.isim}</Text>
+                        <Text style={styles.restaurantDescription}>{restaurant.kategori}</Text>
+                        {restaurant.adres && (
+                          <Text style={styles.restaurantAddress} numberOfLines={1}>
+                            {restaurant.adres}
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={styles.noRestaurants}>{t('restaurant.none')}</Text>
+                )}
+              </View>
 
-          {/* Bottom spacing */}
-          <View style={styles.bottomSpacing} />
+              {/* Bottom spacing */}
+              <View style={styles.bottomSpacing} />
+            </>
+          )}
         </ScrollView>
       </View>
 

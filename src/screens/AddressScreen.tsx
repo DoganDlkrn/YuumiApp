@@ -33,16 +33,36 @@ const otherIcon: ImageSourcePropType = require('../assets/images/pin.png');
 
 type AddressType = 'home' | 'work' | 'other';
 
+// Updated Address interface with additional fields
+interface AddressDetails {
+  street: string;
+  buildingNo: string;
+  apartmentNo: string;
+  district: string;
+  city: string;
+  postalCode: string;
+}
+
 const translations = {
   en: {
     newAddress: 'New Address',
     editAddress: 'Edit Address',
     addressName: 'Address Name',
     addressNamePlaceholder: 'Home, Work, etc.',
-    fullAddress: 'Full Address',
-    fullAddressPlaceholder: 'Street, Building No',
+    street: 'Street',
+    streetPlaceholder: 'Enter street name',
+    buildingNo: 'Building No',
+    buildingNoPlaceholder: 'Enter building number',
+    apartmentNo: 'Apartment No',
+    apartmentNoPlaceholder: 'Enter apartment number',
+    district: 'District',
+    districtPlaceholder: 'Enter district/neighborhood',
+    city: 'City',
+    cityPlaceholder: 'Enter city',
+    postalCode: 'Postal Code',
+    postalCodePlaceholder: 'Enter postal code',
     details: 'Additional Details (Optional)',
-    detailsPlaceholder: 'Apartment no, floor, directions, etc.',
+    detailsPlaceholder: 'Directions, landmarks, etc.',
     selectOnMap: 'Select Location on Map',
     save: 'Save Address',
     cancel: 'Cancel',
@@ -57,10 +77,20 @@ const translations = {
     editAddress: 'Adresi Düzenle',
     addressName: 'Adres Adı',
     addressNamePlaceholder: 'Ev, İş, vb.',
-    fullAddress: 'Tam Adres',
-    fullAddressPlaceholder: 'Sokak, Bina No',
+    street: 'Sokak',
+    streetPlaceholder: 'Sokak adını girin',
+    buildingNo: 'Bina No',
+    buildingNoPlaceholder: 'Bina numarasını girin',
+    apartmentNo: 'Daire No',
+    apartmentNoPlaceholder: 'Daire numarasını girin',
+    district: 'Mahalle/Semt',
+    districtPlaceholder: 'Mahalle/semt adını girin',
+    city: 'Şehir',
+    cityPlaceholder: 'Şehir adını girin',
+    postalCode: 'Posta Kodu',
+    postalCodePlaceholder: 'Posta kodunu girin',
     details: 'Ek Bilgiler (İsteğe Bağlı)',
-    detailsPlaceholder: 'Daire no, kat, yönlendirme, vb.',
+    detailsPlaceholder: 'Yönlendirme, belirgin noktalar, vb.',
     selectOnMap: 'Haritada Konum Seç',
     save: 'Adresi Kaydet',
     cancel: 'İptal',
@@ -84,7 +114,12 @@ const AddressScreen = () => {
   const editAddress = route.params?.address as Address;
   
   const [name, setName] = useState(editAddress?.name || '');
-  const [address, setAddress] = useState(editAddress?.address || '');
+  const [street, setStreet] = useState('');
+  const [buildingNo, setBuildingNo] = useState('');
+  const [apartmentNo, setApartmentNo] = useState('');
+  const [district, setDistrict] = useState('');
+  const [city, setCity] = useState('');
+  const [postalCode, setPostalCode] = useState('');
   const [details, setDetails] = useState(editAddress?.details || '');
   const [type, setType] = useState<Address['type']>(editAddress?.type || 'home');
   const [latitude, setLatitude] = useState(editAddress?.latitude || null);
@@ -93,13 +128,32 @@ const AddressScreen = () => {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [addressId, setAddressId] = useState<string | null>(null);
 
+  // Parse address string into components if editing
+  useEffect(() => {
+    if (editAddress?.address) {
+      try {
+        // Try to parse address string if it's in JSON format
+        const addressParts = JSON.parse(editAddress.address);
+        setStreet(addressParts.street || '');
+        setBuildingNo(addressParts.buildingNo || '');
+        setApartmentNo(addressParts.apartmentNo || '');
+        setDistrict(addressParts.district || '');
+        setCity(addressParts.city || '');
+        setPostalCode(addressParts.postalCode || '');
+      } catch (e) {
+        // If not in JSON format, just set the street field with the full address
+        setStreet(editAddress.address);
+      }
+    }
+  }, [editAddress]);
+
   useEffect(() => {
     if (route.params?.location) {
       const { latitude, longitude, address: formattedAddress } = route.params.location;
       setLatitude(latitude);
       setLongitude(longitude);
       if (formattedAddress) {
-        setAddress(formattedAddress);
+        setStreet(formattedAddress);
       }
     }
   }, [route.params?.location]);
@@ -113,7 +167,21 @@ const AddressScreen = () => {
       if (addressToEdit) {
         setAddressId(addressId);
         setName(addressToEdit.name);
-        setAddress(addressToEdit.address);
+        
+        try {
+          // Try to parse address string if it's in JSON format
+          const addressParts = JSON.parse(addressToEdit.address);
+          setStreet(addressParts.street || '');
+          setBuildingNo(addressParts.buildingNo || '');
+          setApartmentNo(addressParts.apartmentNo || '');
+          setDistrict(addressParts.district || '');
+          setCity(addressParts.city || '');
+          setPostalCode(addressParts.postalCode || '');
+        } catch (e) {
+          // If not in JSON format, just set the street field with the full address
+          setStreet(addressToEdit.address);
+        }
+        
         setDetails(addressToEdit.details || '');
         setLatitude(addressToEdit.latitude);
         setLongitude(addressToEdit.longitude);
@@ -148,14 +216,28 @@ const AddressScreen = () => {
   };
 
   const handleSave = async () => {
-    if (!name || !address) {
-      // Show error message
+    if (!name || !street) {
+      Alert.alert(
+        'Eksik Bilgi',
+        'Lütfen en azından adres adı ve sokak bilgilerini doldurun.',
+        [{ text: 'Tamam' }]
+      );
       return;
     }
 
-    const addressData: Omit<Address, 'id'> = {
+    // Combine all address fields into a JSON string
+    const addressData: AddressDetails = {
+      street,
+      buildingNo,
+      apartmentNo,
+      district,
+      city,
+      postalCode
+    };
+
+    const addressObject: Omit<Address, 'id'> = {
       name,
-      address,
+      address: JSON.stringify(addressData),
       details,
       type,
       latitude: latitude || undefined,
@@ -164,9 +246,9 @@ const AddressScreen = () => {
     };
 
     if (editAddress) {
-      await updateAddress({ ...addressData, id: editAddress.id });
+      await updateAddress({ ...addressObject, id: editAddress.id });
     } else {
-      await addAddress(addressData);
+      await addAddress(addressObject);
     }
 
     navigation.goBack();
@@ -248,78 +330,109 @@ const AddressScreen = () => {
               </View>
             </View>
             
-            {/* Custom Title (Optional) */}
+            {/* Address Name Input */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Adres Başlığı (Opsiyonel)</Text>
+              <Text style={styles.sectionTitle}>{t.addressName}</Text>
               <TextInput
-                style={styles.textInput}
+                style={styles.input}
                 placeholder={t.addressNamePlaceholder}
-                placeholderTextColor={theme === 'dark' ? '#777' : '#999'}
+                placeholderTextColor="#999"
                 value={name}
                 onChangeText={setName}
               />
             </View>
             
-            {/* Map Location Selection */}
+            {/* Address Details Inputs */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Konum</Text>
-              <TouchableOpacity 
-                style={styles.mapSelection}
-                onPress={handleSelectLocation}
-              >
-                <View style={styles.mapSelectionContent}>
-                  <Image source={locationIcon} style={styles.mapIcon} />
-                  <Text style={styles.mapSelectionText}>
-                    {latitude !== null && longitude !== null 
-                      ? 'Konum seçildi' 
-                      : t.selectOnMap}
-                  </Text>
-                </View>
-                <Text style={styles.selectionArrow}>›</Text>
-              </TouchableOpacity>
-              
-              {latitude !== null && longitude !== null && (
-                <Text style={styles.selectedLocation}>
-                  {`Enlem: ${latitude.toFixed(6)}, Boylam: ${longitude.toFixed(6)}`}
-                </Text>
-              )}
+              <Text style={styles.sectionTitle}>{t.street}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t.streetPlaceholder}
+                placeholderTextColor="#999"
+                value={street}
+                onChangeText={setStreet}
+              />
             </View>
             
-            {/* Address Details */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Adres</Text>
+              <Text style={styles.sectionTitle}>{t.buildingNo}</Text>
               <TextInput
-                style={[styles.textInput, styles.addressInput]}
-                placeholder={t.fullAddressPlaceholder}
-                placeholderTextColor={theme === 'dark' ? '#777' : '#999'}
-                value={address}
-                onChangeText={setAddress}
-                multiline
+                style={styles.input}
+                placeholder={t.buildingNoPlaceholder}
+                placeholderTextColor="#999"
+                value={buildingNo}
+                onChangeText={setBuildingNo}
+              />
+            </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t.apartmentNo}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t.apartmentNoPlaceholder}
+                placeholderTextColor="#999"
+                value={apartmentNo}
+                onChangeText={setApartmentNo}
+              />
+            </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t.district}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t.districtPlaceholder}
+                placeholderTextColor="#999"
+                value={district}
+                onChangeText={setDistrict}
+              />
+            </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t.city}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t.cityPlaceholder}
+                placeholderTextColor="#999"
+                value={city}
+                onChangeText={setCity}
+              />
+            </View>
+            
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>{t.postalCode}</Text>
+              <TextInput
+                style={styles.input}
+                placeholder={t.postalCodePlaceholder}
+                placeholderTextColor="#999"
+                value={postalCode}
+                onChangeText={setPostalCode}
+                keyboardType="numeric"
               />
             </View>
             
             {/* Additional Details */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Detay (Opsiyonel)</Text>
+              <Text style={styles.sectionTitle}>{t.details}</Text>
               <TextInput
-                style={[styles.textInput, styles.detailsInput]}
+                style={[styles.input, styles.textArea]}
                 placeholder={t.detailsPlaceholder}
-                placeholderTextColor={theme === 'dark' ? '#777' : '#999'}
+                placeholderTextColor="#999"
                 value={details}
                 onChangeText={setDetails}
+                multiline
+                textAlignVertical="top"
+                numberOfLines={4}
               />
             </View>
             
-            {/* Default Address Option */}
-            <View style={styles.checkboxContainer}>
-              <TouchableOpacity
-                style={[styles.checkbox, isDefault && styles.checkboxChecked]}
-                onPress={() => setIsDefault(!isDefault)}
-              >
-                {isDefault && <Text style={styles.checkMark}>✓</Text>}
-              </TouchableOpacity>
-              <Text style={styles.checkboxLabel}>Varsayılan adres olarak ayarla</Text>
-            </View>
+            {/* Map Selection Button */}
+            <TouchableOpacity 
+              style={styles.selectOnMapButton}
+              onPress={handleSelectLocation}
+            >
+              <Image source={locationIcon} style={styles.selectOnMapIcon} />
+              <Text style={styles.selectOnMapText}>{t.selectOnMap}</Text>
+            </TouchableOpacity>
             
             {/* Save Button */}
             <TouchableOpacity 
@@ -328,6 +441,9 @@ const AddressScreen = () => {
             >
               <Text style={styles.saveButtonText}>{t.save}</Text>
             </TouchableOpacity>
+            
+            {/* Bottom spacing */}
+            <View style={styles.bottomSpacing} />
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
@@ -342,37 +458,38 @@ const lightStyles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: '#00B2FF',
-    paddingBottom: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    zIndex: 10,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingTop: 10,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
   },
   backButton: {
-    padding: 5,
+    padding: 8,
   },
   backButtonText: {
     fontSize: 24,
-    color: '#fff',
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
   },
   placeholder: {
-    width: 30,
+    width: 40,
   },
   whiteContainer: {
     flex: 1,
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -8,
     overflow: 'hidden',
-    width: '100%',
   },
   keyboardAvoidContainer: {
     flex: 1,
@@ -381,17 +498,30 @@ const lightStyles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 30,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 40,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
+    marginBottom: 8,
     color: '#333',
-    marginBottom: 10,
+  },
+  input: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   addressTypeContainer: {
     flexDirection: 'row',
@@ -399,126 +529,70 @@ const lightStyles = StyleSheet.create({
   },
   addressTypeButton: {
     flex: 1,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    marginHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   selectedAddressType: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: '#e1f5fe',
+    borderColor: '#29b6f6',
   },
   addressTypeIcon: {
     width: 24,
     height: 24,
     marginBottom: 8,
-    tintColor: '#777',
+    tintColor: '#666',
   },
   selectedAddressTypeIcon: {
-    tintColor: '#00B2FF',
+    tintColor: '#0288d1',
   },
   addressTypeText: {
     fontSize: 14,
-    color: '#777',
+    color: '#666',
   },
   selectedAddressTypeText: {
+    color: '#0288d1',
     fontWeight: 'bold',
-    color: '#00B2FF',
   },
-  textInput: {
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  selectOnMapButton: {
+    flexDirection: 'row',
+    backgroundColor: '#e1f5fe',
+    padding: 16,
     borderRadius: 8,
-    fontSize: 16,
-    color: '#333',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  addressInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  detailsInput: {
-    minHeight: 60,
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  mapSelection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  mapSelectionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  mapIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
-    tintColor: '#00B2FF',
-  },
-  mapSelectionText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  selectionArrow: {
-    fontSize: 24,
-    color: '#aaa',
-  },
-  selectedLocation: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#666',
-    fontStyle: 'italic',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#00B2FF',
-    marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginVertical: 16,
   },
-  checkboxChecked: {
-    backgroundColor: '#00B2FF',
+  selectOnMapIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+    tintColor: '#0288d1',
   },
-  checkMark: {
-    color: 'white',
+  selectOnMapText: {
     fontSize: 16,
+    color: '#0288d1',
     fontWeight: 'bold',
-  },
-  checkboxLabel: {
-    fontSize: 16,
-    color: '#333',
   },
   saveButton: {
-    backgroundColor: '#00B2FF',
-    paddingVertical: 14,
+    backgroundColor: '#FF6B6B',
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 16,
   },
   saveButtonText: {
-    color: 'white',
     fontSize: 16,
+    color: 'white',
     fontWeight: 'bold',
+  },
+  bottomSpacing: {
+    height: 80,
   },
 });
 
@@ -529,37 +603,38 @@ const darkStyles = StyleSheet.create({
   },
   headerSection: {
     backgroundColor: '#1e88e5',
-    paddingBottom: 15,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    zIndex: 10,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 15,
-    paddingTop: 10,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
   },
   backButton: {
-    padding: 5,
+    padding: 8,
   },
   backButtonText: {
     fontSize: 24,
-    color: '#fff',
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
   },
   placeholder: {
-    width: 30,
+    width: 40,
   },
   whiteContainer: {
     flex: 1,
     backgroundColor: '#121212',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -8,
     overflow: 'hidden',
-    width: '100%',
   },
   keyboardAvoidContainer: {
     flex: 1,
@@ -568,17 +643,31 @@ const darkStyles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 30,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 40,
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#eee',
-    marginBottom: 10,
+    marginBottom: 8,
+    color: '#f5f5f5',
+  },
+  input: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+    color: '#f5f5f5',
+  },
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   addressTypeContainer: {
     flexDirection: 'row',
@@ -586,126 +675,70 @@ const darkStyles = StyleSheet.create({
   },
   addressTypeButton: {
     flex: 1,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#1e1e1e',
+    marginHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    backgroundColor: '#2a2a2a',
-    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
   },
   selectedAddressType: {
     backgroundColor: '#0d47a1',
+    borderColor: '#42a5f5',
   },
   addressTypeIcon: {
     width: 24,
     height: 24,
     marginBottom: 8,
-    tintColor: '#aaa',
+    tintColor: '#999',
   },
   selectedAddressTypeIcon: {
     tintColor: '#90caf9',
   },
   addressTypeText: {
     fontSize: 14,
-    color: '#aaa',
+    color: '#999',
   },
   selectedAddressTypeText: {
-    fontWeight: 'bold',
     color: '#90caf9',
+    fontWeight: 'bold',
   },
-  textInput: {
-    backgroundColor: '#333',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+  selectOnMapButton: {
+    flexDirection: 'row',
+    backgroundColor: '#0d47a1',
+    padding: 16,
     borderRadius: 8,
-    fontSize: 16,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#444',
-  },
-  addressInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  detailsInput: {
-    minHeight: 60,
-    textAlignVertical: 'top',
-    paddingTop: 12,
-  },
-  mapSelection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#333',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#444',
-  },
-  mapSelectionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  mapIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 10,
-    tintColor: '#64b5f6',
-  },
-  mapSelectionText: {
-    fontSize: 16,
-    color: '#eee',
-  },
-  selectionArrow: {
-    fontSize: 24,
-    color: '#777',
-  },
-  selectedLocation: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#bbb',
-    fontStyle: 'italic',
-  },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: '#64b5f6',
-    marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
+    marginVertical: 16,
   },
-  checkboxChecked: {
-    backgroundColor: '#1e88e5',
+  selectOnMapIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+    tintColor: '#90caf9',
   },
-  checkMark: {
-    color: 'white',
+  selectOnMapText: {
     fontSize: 16,
+    color: '#90caf9',
     fontWeight: 'bold',
-  },
-  checkboxLabel: {
-    fontSize: 16,
-    color: '#eee',
   },
   saveButton: {
-    backgroundColor: '#1e88e5',
-    paddingVertical: 14,
+    backgroundColor: '#FF6B6B',
+    padding: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
+    marginTop: 16,
   },
   saveButtonText: {
-    color: 'white',
     fontSize: 16,
+    color: 'white',
     fontWeight: 'bold',
+  },
+  bottomSpacing: {
+    height: 80,
   },
 });
 

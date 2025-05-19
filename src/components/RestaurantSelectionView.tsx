@@ -79,7 +79,7 @@ const RestaurantSelectionView: React.FC<RestaurantSelectionProps> = ({
   }
 
   const renderRestaurantItem = ({ item }: { item: Restaurant }) => {
-    const topItems = item.items.slice(0, 3);
+    const topItems = item.items && item.items.length > 0 ? item.items.slice(0, 3) : [];
     
     return (
       <TouchableOpacity

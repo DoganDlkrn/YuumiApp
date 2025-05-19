@@ -154,7 +154,7 @@ export default function WeeklyPlanScreen() {
 
   // Generate a weekly plan starting from today
   function generateWeeklyPlan(): DayPlan[] {
-    const daysOfWeek = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    const daysOfWeek = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
     

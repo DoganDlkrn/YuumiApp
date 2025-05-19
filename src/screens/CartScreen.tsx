@@ -185,7 +185,16 @@ export default function CartScreen() {
 
       {/* Blue Header Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>{t('cart.title')}</Text>
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>{"←"}</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('cart.title')}</Text>
+          <View style={styles.placeholder} />
+        </View>
       </View>
 
       {/* White Content Section */}
@@ -276,13 +285,28 @@ const lightStyles = StyleSheet.create({
     backgroundColor: '#00B2FF',
     paddingBottom: 15,
   },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+  backButton: {
+    padding: 10,
+  },
+  backButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
-    marginTop: 10,
-    marginLeft: 16,
-    marginBottom: 10,
+    marginLeft: 10,
+    marginRight: 10,
+  },
+  placeholder: {
+    flex: 1,
   },
   whiteContainer: {
     flex: 1,
@@ -514,13 +538,28 @@ const darkStyles = StyleSheet.create({
     backgroundColor: '#1e88e5',
     paddingBottom: 15,
   },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+  backButton: {
+    padding: 10,
+  },
+  backButtonText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: 'white',
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
-    marginTop: 10,
-    marginLeft: 16,
-    marginBottom: 10,
+    marginLeft: 10,
+    marginRight: 10,
+  },
+  placeholder: {
+    flex: 1,
   },
   whiteContainer: {
     flex: 1,

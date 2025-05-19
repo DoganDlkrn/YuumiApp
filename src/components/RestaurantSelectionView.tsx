@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  ActivityIndicator
+  ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -83,70 +84,70 @@ const RestaurantSelectionView: React.FC<RestaurantSelectionProps> = ({
     
     return (
       <TouchableOpacity
-        style={styles.restaurantCard}
+        style={styles.restaurantItem}
         onPress={() => onViewRestaurant(item.id)}
       >
-        <View style={styles.restaurantHeader}>
-          <Image
-            source={{ uri: item.image || item.logoUrl || 'https://via.placeholder.com/100' }}
-            style={styles.restaurantImage}
-            resizeMode="cover"
-          />
+        <View style={styles.restaurantImagePlaceholder}>
+          {item.logoUrl || item.image ? (
+            <Image
+              source={{ uri: item.logoUrl || item.image || 'https://via.placeholder.com/100' }}
+              style={styles.restaurantImage}
+            />
+          ) : (
+            <View style={styles.restaurantImageFallback}>
+              <Text style={styles.restaurantImageFallbackText}>
+                {(item.name || item.isim || 'R').charAt(0)}
+              </Text>
+            </View>
+          )}
         </View>
         
-        <View style={styles.restaurantNameSection}>
+        <View style={styles.restaurantInfo}>
           <Text style={styles.restaurantName} numberOfLines={1}>
             {item.name || item.isim || 'Restaurant'}
           </Text>
           <Text style={styles.restaurantCategory} numberOfLines={1}>
             {item.category || item.kategori || 'Various'}
           </Text>
-        </View>
-        
-        <View style={styles.restaurantDetails}>
-          <Text style={styles.restaurantHours} numberOfLines={1}>
-            {item.calismaSaatleri || item.calismaSaatleri1 || "12:00 - 22:00"}
-          </Text>
           <Text style={styles.restaurantAddress} numberOfLines={1}>
             {item.address || item.adres || 'Address not available'}
           </Text>
-        </View>
-        
-        <View style={styles.restaurantMetaRow}>
-          <View style={styles.restaurantRating}>
-            <Text style={styles.star}>★</Text>
-            <Text style={styles.ratingText}>
-              {item.rating || item.puan || '4.5'} 
-              <Text style={styles.ratingCount}>({item.reviewCount || '0'})</Text>
-            </Text>
-          </View>
-          <View style={styles.deliveryInfo}>
+          
+          <View style={styles.restaurantMetaRow}>
+            <View style={styles.restaurantRating}>
+              <Text style={styles.star}>★</Text>
+              <Text style={styles.ratingText}>
+                {item.rating || item.puan || '4.5'} 
+                <Text style={styles.ratingCount}>({item.reviewCount || '0'})</Text>
+              </Text>
+            </View>
             <Text style={styles.deliveryTime}>
               {item.deliveryTime || item.teslimatSuresi || '25-40 dk'}
             </Text>
-            <Text style={styles.deliveryFee}>{t('free.delivery')}</Text>
           </View>
+          
+          {topItems.length > 0 && (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.quickAddRow}
+              nestedScrollEnabled={true}
+            >
+              {topItems.map(menuItem => (
+                <TouchableOpacity
+                  key={menuItem.id}
+                  style={styles.quickAddBtn}
+                  onPress={() => onAddToCart(item.id, menuItem.id)}
+                >
+                  <Text style={styles.quickAddBtnText} numberOfLines={1}>
+                    {(menuItem.name || menuItem.isim || '').substring(0, 15)}
+                    {(menuItem.name || menuItem.isim || '').length > 15 ? '...' : ''} +
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
         </View>
-        
-        {topItems.length > 0 && (
-          <View style={styles.quickAddSection}>
-            {topItems.map(menuItem => (
-              <TouchableOpacity
-                key={menuItem.id}
-                style={styles.quickAddBtn}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onAddToCart(item.id, menuItem.id);
-                }}
-              >
-                <Text style={styles.quickAddBtnText} numberOfLines={1}>
-                  {(menuItem.name || menuItem.isim || '').substring(0, 20)}
-                  {(menuItem.name || menuItem.isim || '').length > 20 ? '...' : ''} {t('add')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -155,7 +156,7 @@ const RestaurantSelectionView: React.FC<RestaurantSelectionProps> = ({
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onClose}>
-          <Text style={styles.backButtonText}>← {t('back')}</Text>
+          <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         
         <View style={styles.headerContent}>
@@ -166,10 +167,39 @@ const RestaurantSelectionView: React.FC<RestaurantSelectionProps> = ({
             {t('planning.for')} {selectedTime}
           </Text>
         </View>
-        
-        <TouchableOpacity style={styles.completeButton} onPress={onComplete}>
-          <Text style={styles.completeButtonText}>{t('complete')}</Text>
-        </TouchableOpacity>
+
+        <View style={styles.headerRightButtons}>
+          <TouchableOpacity style={styles.completeButton} onPress={onComplete}>
+            <Text style={styles.completeButtonText}>{t('complete')}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Popular Categories */}
+      <View style={styles.categoriesContainer}>
+        <Text style={styles.categoriesTitle}>Popüler Kategoriler</Text>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.categoriesScroll}
+          nestedScrollEnabled={true}
+        >
+          {[
+            { key: 'pizza', label: 'Pizza' },
+            { key: 'burger', label: 'Burger' },
+            { key: 'kebap', label: 'Kebap' },
+            { key: 'cigkofte', label: 'Çiğ Köfte' },
+            { key: 'dessert', label: 'Tatlı' },
+            { key: 'drink', label: 'İçecek' }
+          ].map((category, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={styles.categoryItem}
+            >
+              <Text style={styles.categoryText}>{category.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
       
       <FlatList
@@ -178,6 +208,11 @@ const RestaurantSelectionView: React.FC<RestaurantSelectionProps> = ({
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.restaurantList}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        initialNumToRender={10}
+        maxToRenderPerBatch={5}
+        windowSize={5}
+        nestedScrollEnabled={true}
       />
       
       {cartItemCount > 0 && (
@@ -234,6 +269,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  headerRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   completeButton: {
     backgroundColor: '#00B2FF',
     paddingHorizontal: 12,
@@ -245,57 +284,95 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  restaurantList: {
-    padding: 10,
+  categoriesContainer: {
+    padding: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  restaurantCard: {
-    backgroundColor: '#fff',
+  categoriesTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  categoriesScroll: {
+    flexDirection: 'row',
+  },
+  categoryItem: {
+    backgroundColor: '#f0f0f0',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  categoryText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  restaurantList: {
+    padding: 15,
+  },
+  restaurantItem: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
     borderRadius: 10,
     marginBottom: 15,
-    padding: 12,
+    padding: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  restaurantHeader: {
-    height: 120,
-    borderRadius: 8,
+  restaurantImagePlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
     overflow: 'hidden',
-    marginBottom: 10,
+    backgroundColor: '#f0f0f0',
+    marginRight: 12,
   },
   restaurantImage: {
-    width: '100%',
-    height: '100%',
+    width: 80,
+    height: 80,
+    resizeMode: 'cover',
   },
-  restaurantNameSection: {
-    marginBottom: 6,
+  restaurantImageFallback: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#00B2FF',
+  },
+  restaurantImageFallbackText: {
+    color: 'white',
+    fontSize: 30,
+    fontWeight: 'bold',
+  },
+  restaurantInfo: {
+    flex: 1,
+    justifyContent: 'center',
   },
   restaurantName: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 2,
   },
   restaurantCategory: {
-    fontSize: 12,
-    color: '#666',
-  },
-  restaurantDetails: {
-    marginBottom: 6,
-  },
-  restaurantHours: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 14,
+    color: '#00B2FF',
+    marginBottom: 2,
   },
   restaurantAddress: {
     fontSize: 12,
-    color: '#666',
+    color: '#777',
+    marginBottom: 4,
   },
   restaurantMetaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 5,
   },
   restaurantRating: {
     flexDirection: 'row',
@@ -312,30 +389,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#777',
   },
-  deliveryInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   deliveryTime: {
     fontSize: 12,
-    marginRight: 5,
+    color: '#666',
   },
-  deliveryFee: {
-    fontSize: 12,
-    color: '#4CAF50',
-  },
-  quickAddSection: {
+  quickAddRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     marginTop: 5,
+    height: 30,
   },
   quickAddBtn: {
     backgroundColor: '#f0f0f0',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 5,
     borderRadius: 15,
     marginRight: 8,
-    marginBottom: 8,
   },
   quickAddBtnText: {
     fontSize: 12,

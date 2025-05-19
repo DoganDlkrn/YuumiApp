@@ -580,7 +580,12 @@ export default function HomeScreen() {
 
       {/* White Content Section */}
       <View style={styles.whiteContainer}>
-        <ScrollView style={styles.contentContainer} bounces={true} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.contentContainer} 
+          bounces={true} 
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled={true}
+        >
           {/* Toggle for Weekly/Daily Selection - Now in white section */}
           <View style={styles.toggleContainer}>
             <View style={styles.toggleWrapper}>
@@ -591,7 +596,12 @@ export default function HomeScreen() {
                   orderType === "weekly" && styles.activeToggle
                 ]}
                 activeOpacity={1.0}
-                onPress={() => setOrderType("weekly")}
+                onPress={() => {
+                  setOrderType("weekly");
+                  if (showRestaurantSelection) {
+                    closeRestaurantSelection();
+                  }
+                }}
               >
                 <View style={styles.iconContainer}>
                   <Svg width="24" height="24" viewBox="0 0 24 24">
@@ -616,7 +626,12 @@ export default function HomeScreen() {
                   orderType === "daily" && styles.activeToggle
                 ]}
                 activeOpacity={1.0}
-                onPress={() => setOrderType("daily")}
+                onPress={() => {
+                  setOrderType("daily");
+                  if (showRestaurantSelection) {
+                    closeRestaurantSelection();
+                  }
+                }}
               >
                 <View style={styles.iconContainer}>
                   <Svg width="24" height="24" viewBox="0 0 24 24">

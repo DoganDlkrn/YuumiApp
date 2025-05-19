@@ -173,18 +173,18 @@ const AddressesScreen = () => {
             </View>
           )}
           
-          {/* Add Button */}
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => navigation.navigate('Address')}
-          >
-            <Text style={styles.addButtonText}>{t.addAddress}</Text>
-          </TouchableOpacity>
-          
           {/* Bottom spacing */}
           <View style={styles.bottomSpacing} />
         </ScrollView>
       </View>
+      
+      {/* Add Button - Now at bottom of screen */}
+      <TouchableOpacity 
+        style={styles.addButtonFixed}
+        onPress={() => navigation.navigate('Map')}
+      >
+        <Text style={styles.addButtonText}>{t.addAddress}</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };
@@ -310,16 +310,27 @@ const lightStyles = StyleSheet.create({
     textAlign: 'center',
   },
   addButton: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 12,
-    padding: 16,
+    display: 'none', // Hide the original button
+  },
+  addButtonFixed: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: '#00B2FF',
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   addButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   bottomSpacing: {
     height: 40,
@@ -447,16 +458,27 @@ const darkStyles = StyleSheet.create({
     textAlign: 'center',
   },
   addButton: {
-    backgroundColor: '#FF6B6B',
-    borderRadius: 12,
-    padding: 16,
+    display: 'none', // Hide the original button
+  },
+  addButtonFixed: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: '#00B2FF',
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: 'center',
-    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   addButtonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   bottomSpacing: {
     height: 40,

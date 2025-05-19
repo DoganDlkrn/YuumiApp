@@ -580,11 +580,11 @@ const lightStyles = StyleSheet.create({
     fontWeight: 'bold',
   },
   saveButton: {
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#00B2FF',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 20,
   },
   saveButtonText: {
     fontSize: 16,

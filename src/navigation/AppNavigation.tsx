@@ -1,5 +1,6 @@
 import React, { useContext } from "react";
 import { createStackNavigator } from "@react-navigation/stack";
+import { Animated, Platform } from "react-native";
 import {
   HomeScreen,
   MenuSelectionScreen,
@@ -20,6 +21,48 @@ import {
 } from "../screens";
 import { useLanguage } from "../context/LanguageContext";
 import { Address } from "../context/LocationContext";
+
+// Custom interpolator that removes all animations
+const NoAnimationTransitionSpec = {
+  open: {
+    animation: 'timing',
+    config: { duration: 0 }
+  },
+  close: {
+    animation: 'timing',
+    config: { duration: 0 }
+  }
+};
+
+// Create a completely transparent transition with no animation
+const forNoAnimation = ({ current }) => {
+  return {
+    cardStyle: {
+      opacity: 1
+    },
+    overlayStyle: {
+      opacity: 0
+    },
+  };
+};
+
+// Create a completely transparent transition
+const NoTransition = {
+  gestureDirection: 'horizontal',
+  transitionSpec: {
+    open: NoAnimationTransitionSpec.open,
+    close: NoAnimationTransitionSpec.close
+  },
+  cardStyleInterpolator: forNoAnimation,
+  headerStyleInterpolator: () => {
+    return {
+      leftButtonStyle: { opacity: 1 },
+      rightButtonStyle: { opacity: 1 },
+      titleStyle: { opacity: 1 },
+      backgroundStyle: { opacity: 1 },
+    };
+  }
+};
 
 export interface Meal {
   id: string;
@@ -102,11 +145,15 @@ export default function AppNavigator() {
           fontWeight: "bold",
         },
         headerBackTitle: "",
-        animationEnabled: true, // Enabling animations to ensure proper context updates
-        animationTypeForReplace: 'push',
-        presentation: 'card',
+        animationEnabled: false, // Disable animations globally
+        animationTypeForReplace: 'pop',
+        presentation: 'transparentModal',
         cardStyle: { backgroundColor: 'white' },
-        cardOverlayEnabled: false
+        cardOverlayEnabled: false,
+        gestureEnabled: false,
+        detachPreviousScreen: false,
+        freezeOnBlur: true,
+        ...NoTransition, // Apply no transition configuration
       }}
     >
       <Stack.Screen
@@ -154,7 +201,7 @@ export default function AppNavigator() {
         component={EditProfileScreen}
         options={{ 
           title: t('profile.profileInfo'),
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
       <Stack.Screen
@@ -162,7 +209,7 @@ export default function AppNavigator() {
         component={LanguageScreen}
         options={{ 
           title: t('profile.language'),
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
       <Stack.Screen
@@ -170,7 +217,7 @@ export default function AppNavigator() {
         component={NotificationSettingsScreen}
         options={{ 
           title: t('notifications.settings') || 'Bildirim Ayarları',
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
       <Stack.Screen
@@ -178,7 +225,7 @@ export default function AppNavigator() {
         component={CartScreen}
         options={{ 
           title: t('cart.title'),
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
       <Stack.Screen
@@ -186,7 +233,7 @@ export default function AppNavigator() {
         component={AddressesScreen}
         options={{ 
           title: t('addresses.title') || 'Adreslerim',
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
       <Stack.Screen
@@ -194,7 +241,7 @@ export default function AppNavigator() {
         component={AddressScreen}
         options={{ 
           title: t('address.title') || 'Adres Ekle/Düzenle',
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
       <Stack.Screen
@@ -202,7 +249,7 @@ export default function AppNavigator() {
         component={MapScreen}
         options={{ 
           title: t('map.title') || 'Haritada Seç',
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
       <Stack.Screen
@@ -234,7 +281,7 @@ export default function AppNavigator() {
         component={WeeklyPlanScreen}
         options={{ 
           title: t('toggle.weekly') || 'Weekly Plan',
-          animationEnabled: true,
+          animationEnabled: false,
         }}
       />
     </Stack.Navigator>

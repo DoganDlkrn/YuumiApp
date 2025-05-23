@@ -11,8 +11,12 @@ import {
   Alert
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/core';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLanguage } from '../context/LanguageContext';
+import { useCart } from './CartScreen';
+import { CartItem } from './CartScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Svg, G, Rect, Line, Circle, Polyline, Text as SvgText } from 'react-native-svg';
 import RestaurantSelectionView from '../components/RestaurantSelectionView';
 import TimePicker from '../components/TimePicker';
@@ -50,10 +54,10 @@ interface MenuItem {
 
 interface Selection {
   id: string;
+  restaurantId: string;
   restaurantName: string;
-  restaurantImage: string;
   itemName: string;
-  price: string;
+  price: number;
 }
 
 interface Plan {
@@ -69,19 +73,6 @@ interface DayPlan {
   date: string;
   completed: boolean;
   plans: Plan[];
-}
-
-interface CartItem {
-  id: string;
-  restaurantId: string;
-  restaurantName: string;
-  restaurantImage: string;
-  itemId: string;
-  itemName: string;
-  price: string;
-  quantity: number;
-  dayIndex: number;
-  planId: string;
 }
 
 export default function WeeklyPlanScreen() {
@@ -104,6 +95,7 @@ export default function WeeklyPlanScreen() {
   
   const navigation = useNavigation();
   const { t } = useLanguage();
+  const { addItem, removeItem } = useCart();
 
   // Fetch restaurants from Firestore
   useEffect(() => {
@@ -151,6 +143,71 @@ export default function WeeklyPlanScreen() {
 
     fetchRestaurants();
   }, []);
+
+  // Load weekly plan from AsyncStorage on mount
+  useEffect(() => {
+    const loadWeeklyPlan = async () => {
+      try {
+        const savedPlan = await AsyncStorage.getItem('weeklyPlan');
+        if (savedPlan) {
+          setWeeklyPlan(JSON.parse(savedPlan));
+          console.log('Loaded weekly plan from AsyncStorage');
+        }
+      } catch (error) {
+        console.error('Error loading weekly plan:', error);
+      }
+    };
+    
+    loadWeeklyPlan();
+  }, []);
+
+  // Save weekly plan to AsyncStorage whenever it changes
+  useEffect(() => {
+    const saveWeeklyPlan = async () => {
+      try {
+        await AsyncStorage.setItem('weeklyPlan', JSON.stringify(weeklyPlan));
+        console.log('Saved weekly plan to AsyncStorage');
+      } catch (error) {
+        console.error('Error saving weekly plan:', error);
+      }
+    };
+    
+    saveWeeklyPlan();
+  }, [weeklyPlan]);
+
+  // Sync with global cart when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('WeeklyPlanScreen focused, syncing with global cart');
+      
+      // First load the weekly plan from AsyncStorage if needed
+      const loadAndSyncData = async () => {
+        try {
+          // Load weekly plan if not already loaded
+          const savedPlan = await AsyncStorage.getItem('weeklyPlan');
+          if (savedPlan) {
+            const parsedPlan = JSON.parse(savedPlan);
+            console.log('Loaded weekly plan from AsyncStorage on focus');
+            setWeeklyPlan(parsedPlan);
+          }
+          
+          // Then sync the weekly plan with the global cart
+          setTimeout(() => {
+            syncWeeklyPlanWithGlobalCart();
+          }, 500); // Small delay to ensure weekly plan is loaded
+        } catch (error) {
+          console.error('Error loading/syncing data on focus:', error);
+        }
+      };
+      
+      loadAndSyncData();
+      
+      // Return cleanup function
+      return () => {
+        console.log('WeeklyPlanScreen unfocused');
+      };
+    }, [])
+  );
 
   // Generate a weekly plan starting from today
   function generateWeeklyPlan(): DayPlan[] {
@@ -289,11 +346,33 @@ export default function WeeklyPlanScreen() {
 
   // Open restaurant selection for a plan
   const openRestaurantSelection = (planId: string) => {
-    setSelectedPlanInfo({
+    console.log('[WeeklyPlanScreen] openRestaurantSelection triggered for planId:', planId, 'Active Day Index:', activeDayIndex);
+    // Clear any previous selection data to avoid mixing plans
+    setSelectedPlanInfo(null);
+    setHeaderCart([]);
+    setShowCartActions(false);
+    
+    // Set the new selection info
+    const newSelectedPlanInfo = {
       dayIndex: activeDayIndex,
       planId
-    });
-    setShowRestaurantSelection(true);
+    };
+    setSelectedPlanInfo(newSelectedPlanInfo);
+    console.log('[WeeklyPlanScreen] selectedPlanInfo SET TO:', newSelectedPlanInfo);
+    
+    // Make sure restaurants have loaded before showing the selection view
+    if (restaurants && restaurants.length > 0) {
+      setShowRestaurantSelection(true);
+      console.log('[WeeklyPlanScreen] setShowRestaurantSelection to true');
+    } else {
+      // Show a message if no restaurants are available
+      Alert.alert(
+        "Bilgi",
+        "Restoran bilgileri yüklenemedi. Lütfen daha sonra tekrar deneyin.",
+        [{ text: "Tamam", onPress: () => {} }]
+      );
+      console.log('[WeeklyPlanScreen] Restaurants not loaded, Alert shown.');
+    }
   };
   
   // Close restaurant selection
@@ -304,55 +383,74 @@ export default function WeeklyPlanScreen() {
 
   // Add item to cart
   const addItemToCart = (restaurantId: string, itemId: string) => {
-    if (!selectedPlanInfo) return;
+    console.log('[WeeklyPlanScreen][addItemToCart] TRIGGERED. restaurantId:', restaurantId, 'itemId:', itemId);
+    console.log('[WeeklyPlanScreen][addItemToCart] current selectedPlanInfo:', selectedPlanInfo);
+    if (!selectedPlanInfo) {
+      console.error('[WeeklyPlanScreen][addItemToCart] selectedPlanInfo is NULL. Aborting.');
+      return;
+    }
     
     const { dayIndex, planId } = selectedPlanInfo;
     const restaurant = restaurants.find(r => r.id === restaurantId);
-    if (!restaurant) return;
+    if (!restaurant) {
+      console.error('[WeeklyPlanScreen][addItemToCart] Restaurant not found for ID:', restaurantId);
+      return;
+    }
     
     const item = restaurant.items.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item) {
+      console.error('[WeeklyPlanScreen][addItemToCart] Item not found for ID:', itemId, 'in restaurant', restaurantId);
+      return;
+    }
     
-    const itemPrice = typeof item.fiyat === 'number' ? 
-      `₺${item.fiyat.toFixed(2)}` : 
-      item.fiyat ? `₺${item.fiyat}` : 
-      typeof item.price === 'number' ? `₺${item.price.toFixed(2)}` : `₺0.00`;
+    let itemPriceNumber: number;
+    if (typeof item.fiyat === 'number') {
+      itemPriceNumber = item.fiyat;
+    } else if (typeof item.fiyat === 'string') {
+      itemPriceNumber = parseFloat(String(item.fiyat).replace('₺', '').replace(',', '.'));
+    } else if (typeof item.price === 'number') {
+      itemPriceNumber = item.price;
+    } else if (typeof item.price === 'string') {
+      itemPriceNumber = parseFloat(String(item.price).replace('₺', '').replace(',', '.'));
+    } else {
+      itemPriceNumber = 0;
+    }
+    if (isNaN(itemPriceNumber)) itemPriceNumber = 0;
     
-    const cartItem: CartItem = {
-      id: `item-${Date.now()}`,
+    const itemNameFromDb = item.isim || item.name || 'Item';
+    const restaurantName = restaurant.isim || restaurant.name || 'Restaurant';
+    const uniqueId = `plan-${dayIndex}-${planId}-item-${Date.now()}`;
+    
+    const localCartItemForDisplay = {
+      id: uniqueId,
       restaurantId,
-      restaurantName: restaurant.name || restaurant.isim || 'Restaurant',
-      restaurantImage: restaurant.image || restaurant.logoUrl || 'https://via.placeholder.com/100',
-      itemId,
-      itemName: item.name || item.isim || 'Item',
-      price: itemPrice,
+      restaurantName,
+      itemId, 
+      name: itemNameFromDb, 
+      price: itemPriceNumber, 
       quantity: 1,
       dayIndex,
       planId
     };
+    console.log('[WeeklyPlanScreen][addItemToCart] localCartItemForDisplay created:', localCartItemForDisplay);
     
-    // Add to cart (by day/plan)
     const cartKey = `${dayIndex}-${planId}`;
-    
     setCart(prevCart => {
       const updatedCart = { ...prevCart };
       if (!updatedCart[cartKey]) {
         updatedCart[cartKey] = [];
       }
-      updatedCart[cartKey].push(cartItem);
+      updatedCart[cartKey].push(localCartItemForDisplay);
+      console.log('[WeeklyPlanScreen][addItemToCart] setCart CALLED. New cart for key', cartKey, ':', JSON.stringify(updatedCart[cartKey], null, 2));
       return updatedCart;
     });
     
-    // Add to header cart as well
-    setHeaderCart(prev => [...prev, cartItem]);
-    
-    // Show cart actions
+    setHeaderCart(prev => [...prev, localCartItemForDisplay as any]);
     setShowCartActions(true);
     
-    // Show added to cart message
     Alert.alert(
       t('cart.added'),
-      `${item.name || item.isim || 'Item'} ${t('cart.added.to')}`,
+      `${itemNameFromDb} ${t('cart.added.to')}`,
       [{ text: 'OK', onPress: () => {} }],
       { cancelable: true }
     );
@@ -402,49 +500,104 @@ export default function WeeklyPlanScreen() {
     const items = cart[cartKey] || [];
     
     return items.reduce((total, item) => {
-      const price = parseFloat(item.price.replace('₺', '').replace(',', '.'));
-      return total + (price * item.quantity);
+      const price = typeof item.price === 'number' ? item.price : parseFloat(String(item.price || '0').replace('₺', '').replace(',', '.'));
+      const quantity = typeof item.quantity === 'number' ? item.quantity : 1;
+      return total + (price * quantity);
     }, 0);
   };
 
   // Add cart to selection
   const addCartToSelection = () => {
-    if (!selectedPlanInfo) return;
-    
+    console.log('[WeeklyPlanScreen][addCartToSelection] TRIGGERED.');
+    console.log('[WeeklyPlanScreen][addCartToSelection] current selectedPlanInfo:', selectedPlanInfo);
+    if (!selectedPlanInfo) {
+      console.error('[WeeklyPlanScreen][addCartToSelection] selectedPlanInfo is NULL. Aborting.');
+      return;
+    }
+  
     const { dayIndex, planId } = selectedPlanInfo;
     const cartKey = `${dayIndex}-${planId}`;
-    const cartItems = cart[cartKey] || [];
-    
-    if (cartItems.length === 0) return;
-    
-    const updatedPlan = [...weeklyPlan];
-    const planIndex = updatedPlan[dayIndex].plans.findIndex(plan => plan.id === planId);
-    
-    if (planIndex >= 0) {
-      // Add cart items to plan selections
-      cartItems.forEach(item => {
-        updatedPlan[dayIndex].plans[planIndex].selections.push({
-          id: item.id,
-          restaurantName: item.restaurantName,
-          restaurantImage: item.restaurantImage,
-          itemName: item.itemName,
-          price: item.price
-        });
+    const localPlanCartItems = cart[cartKey] || [];
+    console.log(`[WeeklyPlanScreen][addCartToSelection] Items from local cart for key ${cartKey}:`, JSON.stringify(localPlanCartItems, null, 2));
+  
+    if (localPlanCartItems.length === 0) {
+      console.log('[WeeklyPlanScreen][addCartToSelection] No items in local cart to add. Aborting.');
+      return;
+    }
+  
+    setWeeklyPlan(prevWeeklyPlan => {
+      console.log('[WeeklyPlanScreen][addCartToSelection] setWeeklyPlan CALLED. prevWeeklyPlan (day of interest):\nDayIndex: ', dayIndex, 'PlanID: ', planId, 'Plan details:', JSON.stringify(prevWeeklyPlan[dayIndex]?.plans.find(p => p.id === planId), null, 2));
+      const newWeeklyPlan = prevWeeklyPlan.map((day, dIndex) => {
+        if (dIndex === dayIndex) {
+          const newPlans = day.plans.map(p => {
+            if (p.id === planId) {
+              console.log(`[WeeklyPlanScreen][addCartToSelection] Updating plan: ${p.id} for day ${dIndex}`);
+              const newSelections: Selection[] = [...p.selections];
+              localPlanCartItems.forEach(localItem => {
+                console.log('[WeeklyPlanScreen][addCartToSelection] Processing localItem for plan selection:', localItem);
+                newSelections.push({
+                  id: localItem.id,
+                  restaurantId: localItem.restaurantId,
+                  restaurantName: localItem.restaurantName,
+                  itemName: localItem.name, 
+                  price: localItem.price 
+                });
+                
+                console.log('[WeeklyPlanScreen][addCartToSelection] Attempting to call global addItem for:', localItem.name, 'with planInfo:', { dayIndex, planId });
+                try {
+                  addItem({
+                    id: localItem.id,
+                    name: localItem.name,
+                    price: localItem.price,
+                    restaurantId: localItem.restaurantId,
+                    restaurantName: localItem.restaurantName,
+                    planInfo: { dayIndex, planId }
+                  });
+                  console.log(`[WeeklyPlanScreen][addCartToSelection] Global addItem SUCCEEDED for: ${localItem.name}`);
+                } catch (error) {
+                  console.error(`[WeeklyPlanScreen][addCartToSelection] Global addItem FAILED for: ${localItem.name}`, error);
+                }
+              });
+              console.log(`[WeeklyPlanScreen][addCartToSelection] Plan ${p.id} newSelections:`, JSON.stringify(newSelections, null, 2));
+              return { ...p, selections: newSelections };
+            }
+            return p;
+          });
+          return { ...day, plans: newPlans };
+        }
+        return day;
       });
       
-      setWeeklyPlan(updatedPlan);
-      
-      // Clear cart
-      setCart(prevCart => {
-        const updatedCart = { ...prevCart };
-        delete updatedCart[cartKey];
-        return updatedCart;
-      });
-      
-      // Clear header cart as well
-      setHeaderCart([]);
-      
-      setShowCartActions(false);
+      console.log('[WeeklyPlanScreen][addCartToSelection] About to save to AsyncStorage and sync with global cart.');
+      try {
+        AsyncStorage.setItem('weeklyPlan', JSON.stringify(newWeeklyPlan));
+        console.log('[WeeklyPlanScreen][addCartToSelection] weeklyPlan SAVED to AsyncStorage.');
+        syncWeeklyPlanWithGlobalCart();
+      } catch (error) {
+        console.error('[WeeklyPlanScreen][addCartToSelection] Error saving/syncing weekly plan:', error);
+      }
+      return newWeeklyPlan;
+    });
+    
+    setCart(prevCart => {
+      const updatedCart = { ...prevCart };
+      delete updatedCart[cartKey];
+      console.log('[WeeklyPlanScreen][addCartToSelection] Local cart for key', cartKey, 'CLEARED.');
+      return updatedCart;
+    });
+    setHeaderCart([]);
+    setShowCartActions(false);
+    console.log('[WeeklyPlanScreen][addCartToSelection] FINISHED. Header cart cleared, actions hidden.');
+  };
+  
+  // Sync the weekly plan with the global cart
+  const syncWeeklyPlanWithGlobalCart = () => {
+    console.log('Syncing weekly plan with global cart');
+    try {
+      const { syncWithWeeklyPlan } = useCart();
+      syncWithWeeklyPlan(weeklyPlan);
+    } catch (error) {
+      console.error('Error syncing weekly plan with global cart:', error);
     }
   };
 
@@ -469,26 +622,79 @@ export default function WeeklyPlanScreen() {
 
   // Remove a selection from a plan
   const removeSelection = (planId: string, selectionId: string) => {
-    const updatedPlan = [...weeklyPlan];
-    const currentDay = updatedPlan[activeDayIndex];
-    const planIndex = currentDay.plans.findIndex(plan => plan.id === planId);
-    
-    if (planIndex >= 0) {
-      currentDay.plans[planIndex].selections = currentDay.plans[planIndex].selections.filter(
-        selection => selection.id !== selectionId
-      );
-      setWeeklyPlan(updatedPlan);
-    }
+    // Use immutable update pattern
+    setWeeklyPlan(prevWeeklyPlan => {
+      const newWeeklyPlan = prevWeeklyPlan.map((day, dIndex) => {
+        if (dIndex === activeDayIndex) {
+          // Create a new copy of the day's plans
+          const newPlans = day.plans.map(p => {
+            if (p.id === planId) {
+              // Find the selection to be removed
+              const selectionToRemove = p.selections.find(
+                selection => selection.id === selectionId
+              );
+              
+              // Create a new copy of selections without the removed item
+              const newSelections = p.selections.filter(
+                selection => selection.id !== selectionId
+              );
+              
+              // Also try to remove from global cart if it exists there
+              if (selectionToRemove) {
+                try {
+                  console.log(`Removing item ${selectionId} from global cart`);
+                  removeItem(selectionId);
+                } catch (error) {
+                  console.error('Error removing from global cart:', error);
+                }
+              }
+              
+              return { ...p, selections: newSelections };
+            }
+            return p;
+          });
+          
+          return { ...day, plans: newPlans };
+        }
+        return day;
+      });
+      
+      // Save the updated weekly plan to AsyncStorage
+      try {
+        AsyncStorage.setItem('weeklyPlan', JSON.stringify(newWeeklyPlan));
+        console.log('Weekly plan saved to AsyncStorage after item removal');
+        
+        // Also sync the entire weekly plan with the global cart
+        syncWeeklyPlanWithGlobalCart();
+      } catch (error) {
+        console.error('Error saving weekly plan:', error);
+      }
+      
+      return newWeeklyPlan;
+    });
   };
 
   // Complete meal selection
   const completeMealSelection = () => {
+    console.log('CompleteMealSelection called');
+    
     if (getCurrentCartItemCount() > 0) {
+      console.log(`Adding ${getCurrentCartItemCount()} items from cart to selection`);
       addCartToSelection();
     }
     
-    setShowRestaurantSelection(false);
-    setSelectedPlanInfo(null);
+    // Add a small delay to ensure state updates before UI changes
+    setTimeout(() => {
+      setShowRestaurantSelection(false);
+      setSelectedPlanInfo(null);
+      
+      // Kullanıcıyı bilgilendirelim
+      Alert.alert(
+        "Bilgi",
+        "Seçtiğiniz yemekler haftalık planınıza eklenmiştir.",
+        [{ text: "Tamam", onPress: () => {} }]
+      );
+    }, 100);
   };
 
   // Calculate total cost of plan
@@ -497,8 +703,7 @@ export default function WeeklyPlanScreen() {
     weeklyPlan.forEach(day => {
       day.plans.forEach(plan => {
         plan.selections.forEach(selection => {
-          const price = selection.price.replace('₺', '').replace(',', '.');
-          total += parseFloat(price) || 0;
+          total += selection.price;
         });
       });
     });
@@ -519,7 +724,12 @@ export default function WeeklyPlanScreen() {
       // First add current cart to selection
       addCartToSelection();
     }
-    navigation.navigate('Cart' as never);
+    
+    // Make sure we're using the correct navigation method
+    console.log('Navigating to Cart screen');
+    setTimeout(() => {
+      navigation.navigate('Cart' as never);
+    }, 100); // Small delay to ensure state updates complete
   };
 
   const selectedDay = selectedPlanInfo ? weeklyPlan[selectedPlanInfo.dayIndex] : null;
@@ -543,7 +753,18 @@ export default function WeeklyPlanScreen() {
           selectedTime={selectedPlan?.time || ''}
           cartItemCount={getCurrentCartItemCount()}
           cartTotal={calculateCartTotal()}
-          goToCart={goToCart}
+          goToCart={() => {
+            console.log('GoToCart called from RestaurantSelectionView');
+            // First add items to the plan before navigating
+            if (getCurrentCartItemCount() > 0) {
+              addCartToSelection();
+            }
+            // Add a small delay to ensure state updates before navigation
+            setTimeout(() => {
+              // Then navigate to cart
+              navigation.navigate('Cart' as never);
+            }, 100);
+          }}
         />
       ) : (
         <>
@@ -638,7 +859,7 @@ export default function WeeklyPlanScreen() {
           </View>
           
           {/* Day Content */}
-          <View style={styles.dayContent}>
+          <ScrollView style={styles.dayContent} showsVerticalScrollIndicator={false}>
             <View style={styles.dayHeader}>
               <Text style={styles.dayTitle}>
                 {weeklyPlan[activeDayIndex]?.name} - {weeklyPlan[activeDayIndex]?.date}
@@ -665,7 +886,7 @@ export default function WeeklyPlanScreen() {
               </View>
             </View>
             
-            <ScrollView style={styles.planSlots}>
+            <View style={styles.planSlots}>
               {weeklyPlan[activeDayIndex]?.plans.map(plan => (
                 <View key={plan.id} style={styles.planSlot}>
                   <View style={styles.planHeader}>
@@ -683,15 +904,14 @@ export default function WeeklyPlanScreen() {
                     {plan.selections.length > 0 ? (
                       plan.selections.map(selection => (
                         <View key={selection.id} style={styles.mealSelection}>
-                          <Image 
-                            source={{ uri: selection.restaurantImage || 'https://via.placeholder.com/100' }}
-                            style={styles.mealThumbnail}
-                          />
+                          <View style={styles.mealThumbnail}>
+                            <Text style={{fontSize: 20}}>🍽️</Text>
+                          </View>
                           <View style={styles.mealInfo}>
                             <Text style={styles.mealName} numberOfLines={1}>{selection.itemName}</Text>
                             <Text style={styles.mealRestaurant} numberOfLines={1}>{selection.restaurantName}</Text>
                           </View>
-                          <Text style={styles.mealPrice}>{selection.price}</Text>
+                          <Text style={styles.mealPrice}>{`₺${selection.price.toFixed(2)}`}</Text>
                           <TouchableOpacity 
                             style={styles.removeMealButton}
                             onPress={() => removeSelection(plan.id, selection.id)}
@@ -720,19 +940,11 @@ export default function WeeklyPlanScreen() {
                   </View>
                 </View>
               ))}
-            </ScrollView>
-          </View>
-          
-          {/* Footer with Total */}
-          <View style={styles.footer}>
-            <View style={styles.totalContainer}>
-              <Text style={styles.totalLabel}>Toplam:</Text>
-              <Text style={styles.totalAmount}>₺{calculateTotalCost().toFixed(2)}</Text>
             </View>
-            <TouchableOpacity style={styles.checkoutButton} onPress={goToCart}>
-              <Text style={styles.checkoutButtonText}>Siparişi Tamamla</Text>
-            </TouchableOpacity>
-          </View>
+            
+            {/* Add padding at the bottom for better scrolling experience */}
+            <View style={{ height: 50 }} />
+          </ScrollView>
         </>
       )}
 
@@ -900,6 +1112,7 @@ const styles = StyleSheet.create({
   dayContent: {
     flex: 1,
     padding: 15,
+    paddingBottom: 0,
   },
   dayHeader: {
     flexDirection: 'row',
@@ -941,6 +1154,7 @@ const styles = StyleSheet.create({
   },
   planSlots: {
     flex: 1,
+    paddingBottom: 20,
   },
   planSlot: {
     backgroundColor: '#f9f9f9',
@@ -1053,39 +1267,5 @@ const styles = StyleSheet.create({
   },
   addMoreButtonText: {
     color: '#555',
-  },
-  footer: {
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    padding: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 5,
-    color: '#333',
-  },
-  totalAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#00B2FF',
-  },
-  checkoutButton: {
-    backgroundColor: '#00B2FF',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 25,
-  },
-  checkoutButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
   },
 }); 

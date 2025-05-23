@@ -19,6 +19,7 @@ import { RootStackParamList } from "../navigation/AppNavigation";
 import { useLanguage } from "../context/LanguageContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Restaurant, getAllRestaurants } from "../services/RestaurantService";
+import BottomTabBar from '../components/BottomTabBar';
 
 // Import images
 const searchIcon: ImageSourcePropType = require('../assets/images/search-interface-symbol.png');
@@ -334,43 +335,7 @@ export default function SearchScreen() {
       </View>
 
       {/* Bottom Tab Bar */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Home')}
-        >
-          <Image source={restaurantIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.food')}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tabItem, styles.activeTabItem]}
-          activeOpacity={1.0}
-        >
-          <Image source={searchIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.search')}</Text>
-          <View style={styles.activeIndicator} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Orders')}
-        >
-          <Image source={orderIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.orders')}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Image source={userIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.profile')}</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomTabBar activeTab="Search" t={t} />
     </SafeAreaView>
   );
 }
@@ -569,58 +534,9 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   bottomSpacing: {
-    height: Platform.OS === 'ios' ? 80 : 60,
+    height: Platform.OS === 'ios' ? 100 : 80,
   },
-  bottomTabBar: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    width: '100%',
-    paddingTop: 8,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 10,
-    height: Platform.OS === 'ios' ? 80 : 60,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  activeTabItem: {
-    position: 'relative',
-  },
-  tabIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#777',
-    marginBottom: 3,
-  },
-  tabLabel: {
-    fontSize: 10,
-    color: '#777',
-  },
-  activeTabIcon: {
-    tintColor: '#00B2FF',
-  },
-  activeTabLabel: {
-    color: '#00B2FF',
-    fontWeight: '500',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    width: 40,
-    height: 3,
-    backgroundColor: '#00B2FF',
-    alignSelf: 'center',
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-  },
+  // Restaurant styles
   allRestaurantsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -663,5 +579,5 @@ const styles = StyleSheet.create({
   restaurantCardCategory: {
     fontSize: 14,
     color: '#777',
-  },
+  }
 }); 

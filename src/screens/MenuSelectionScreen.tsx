@@ -20,7 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { db } from "../config/firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import TouchableWithoutFeedback from "../components/TouchableWithoutFeedback";
-import { useCart } from "../context/CartContext";
+import { useCart } from "./CartScreen";
 import { useLanguage } from "../context/LanguageContext";
 import LoadingOverlay from "../components/LoadingOverlay";
 

@@ -1,16 +1,51 @@
 // App.tsx
 import React, { useState, useEffect, ErrorInfo, useContext } from "react";
-import { StyleSheet, StatusBar, View, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, StatusBar, View, Text, TouchableOpacity, Platform, UIManager } from "react-native";
 import { SafeAreaProvider, initialWindowMetrics } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
+import { enableScreens } from 'react-native-screens';
 import AppNavigator from "./src/navigation/AppNavigation";
 import CustomNavigationContainer from "./src/navigation/NavigationContainer";
 import { AuthProvider } from "./src/context/AuthContext";
 import { ThemeProvider } from "./src/context/ThemeContext";
 import { LanguageProvider, useLanguage, LanguageCode } from "./src/context/LanguageContext";
+import { CartProvider } from './src/screens/CartScreen';
 import * as Animatable from "react-native-animatable";
 import YLogo from "./src/components/YLogo";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Enable screens for better performance and disable animations
+enableScreens(true);
+
+// Configure screen options to disable animations
+if (Platform.OS === 'ios') {
+  // iOS specific configuration
+  UIManager.setLayoutAnimationEnabledExperimental && 
+  UIManager.setLayoutAnimationEnabledExperimental(false);
+}
+
+// Create a custom theme with no animations
+const NoAnimationTheme = {
+  dark: false,
+  colors: {
+    primary: '#00B2FF',
+    background: 'white',
+    card: 'white',
+    text: '#333333',
+    border: '#DDDDDD',
+    notification: '#FF3B30',
+  },
+  animation: 'none',
+  animationEnabled: false
+};
+
+// Custom navigation options to disable animations
+const navigationOptions = {
+  screenOptions: {
+    animationEnabled: false,
+    gestureEnabled: false
+  }
+};
 
 // Error translations
 const errorTranslations = {
@@ -201,11 +236,22 @@ export default function App() {
       <LanguageProvider>
         <ErrorBoundary>
           <AuthProvider>
-            <NavigationContainer>
-              <CustomNavigationContainer>
-                <AppContent />
-              </CustomNavigationContainer>
-            </NavigationContainer>
+            <CartProvider>
+              <NavigationContainer
+                theme={NoAnimationTheme}
+                documentTitle={{
+                  enabled: false
+                }}
+                linking={{
+                  enabled: false
+                }}
+                detachInactiveScreens={true}
+              >
+                <CustomNavigationContainer>
+                  <AppContent />
+                </CustomNavigationContainer>
+              </NavigationContainer>
+            </CartProvider>
           </AuthProvider>
         </ErrorBoundary>
       </LanguageProvider>

@@ -20,12 +20,14 @@ import { RootStackParamList } from "../navigation/AppNavigation";
 import { Svg, Path, Rect, G, Text as SvgText, Circle, Line, Polyline } from 'react-native-svg';
 import { useLanguage } from "../context/LanguageContext";
 import { getAllRestaurants, Restaurant } from '../services/RestaurantService';
-import { useCart } from "../context/CartContext";
+import { useCart } from "./CartScreen";
 import { useLocation } from '../context/LocationContext';
 import RestaurantSelectionView from '../components/RestaurantSelectionView';
 import TimePicker from '../components/TimePicker';
+import BottomTabBar from '../components/BottomTabBar';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import images
 const menuIcon: ImageSourcePropType = require('../assets/images/menu.png');
@@ -104,7 +106,7 @@ export default function HomeScreen() {
   const { t, language } = useLanguage();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
-  const { getItemsCount } = useCart();
+  const { getItemsCount, addItem, removeItem } = useCart();
   const [cartItemsCount, setCartItemsCount] = useState(0);
   const { selectedAddress, addresses, currentLocation } = useLocation();
   const [weeklyPlan, setWeeklyPlan] = useState<DayPlan[]>([]);
@@ -169,7 +171,26 @@ export default function HomeScreen() {
 
   // Initialize weekly plan
   useEffect(() => {
-    setWeeklyPlan(generateWeeklyPlan());
+    // Try to load saved weekly plan first
+    const loadWeeklyPlan = async () => {
+      try {
+        const savedPlan = await AsyncStorage.getItem('weeklyPlan');
+        if (savedPlan) {
+          const parsedPlan = JSON.parse(savedPlan);
+          console.log('Loaded weekly plan from AsyncStorage');
+          setWeeklyPlan(parsedPlan);
+        } else {
+          // If no saved plan, generate a new one
+          setWeeklyPlan(generateWeeklyPlan());
+        }
+      } catch (error) {
+        console.error('Error loading weekly plan:', error);
+        // Fallback to generating a new plan
+        setWeeklyPlan(generateWeeklyPlan());
+      }
+    };
+    
+    loadWeeklyPlan();
   }, []);
 
   // Generate a weekly plan starting from today
@@ -309,14 +330,24 @@ export default function HomeScreen() {
 
   // Open restaurant selection for a plan
   const openRestaurantSelection = (planId: string) => {
-    setSelectedPlanInfo({
+    console.log('[HomeScreen] openRestaurantSelection triggered for planId:', planId, 'Active Day Index:', activeDayIndex);
+    // Clear any previous selection data to avoid mixing plans
+    setSelectedPlanInfo(null);
+    setHeaderCart([]);
+    setShowCartActions(false);
+    
+    // Set the new selection info
+    const newSelectedPlanInfo = {
       dayIndex: activeDayIndex,
       planId
-    });
+    };
+    setSelectedPlanInfo(newSelectedPlanInfo);
+    console.log('[HomeScreen] selectedPlanInfo SET TO:', newSelectedPlanInfo);
     
     // Make sure restaurants have loaded before showing the selection view
     if (restaurants && restaurants.length > 0) {
       setShowRestaurantSelection(true);
+      console.log('[HomeScreen] setShowRestaurantSelection to true');
     } else {
       // Show a message if no restaurants are available
       Alert.alert(
@@ -324,6 +355,7 @@ export default function HomeScreen() {
         "Restoran bilgileri yüklenemedi. Lütfen daha sonra tekrar deneyin.",
         [{ text: "Tamam", onPress: () => {} }]
       );
+      console.log('[HomeScreen] Restaurants not loaded, Alert shown.');
     }
   };
   
@@ -335,67 +367,74 @@ export default function HomeScreen() {
 
   // Add item to cart
   const addItemToCart = (restaurantId: string, itemId: string) => {
-    if (!selectedPlanInfo) return;
+    console.log('[HomeScreen][addItemToCart] TRIGGERED. restaurantId:', restaurantId, 'itemId:', itemId);
+    console.log('[HomeScreen][addItemToCart] current selectedPlanInfo:', selectedPlanInfo);
+    if (!selectedPlanInfo) {
+      console.error('[HomeScreen][addItemToCart] selectedPlanInfo is NULL. Aborting.');
+      return;
+    }
     
     const { dayIndex, planId } = selectedPlanInfo;
-    // Use a type assertion to handle the restaurant structure
     const restaurant = restaurants.find(r => r.id === restaurantId) as any;
-    if (!restaurant) return;
+    if (!restaurant) {
+      console.error('[HomeScreen][addItemToCart] Restaurant not found for ID:', restaurantId);
+      return;
+    }
     
-    // Find item from restaurant menu items, handle different possible structures
-    let item;
+    let item: MenuItem | undefined;
     if (Array.isArray(restaurant.menuItems)) {
       item = restaurant.menuItems.find((i: any) => i.id === itemId);
     } else if (Array.isArray(restaurant.items)) {
       item = restaurant.items.find((i: any) => i.id === itemId);
-    } else {
-      console.error('Restaurant menu items not found');
+    }
+    
+    if (!item) {
+      console.error('[HomeScreen][addItemToCart] Item not found for ID:', itemId, 'in restaurant', restaurantId);
       return;
     }
     
-    if (!item) return;
-    
-    // Handle different price and name formats based on data structure
     const itemPrice = typeof item.fiyat === 'number' ? 
-      `₺${item.fiyat.toFixed(2)}` : 
-      item.fiyat ? `₺${item.fiyat}` : 
-      typeof item.price === 'number' ? `₺${item.price.toFixed(2)}` : `₺0.00`;
+      item.fiyat : 
+      (typeof item.fiyat === 'string' && !isNaN(parseFloat(item.fiyat))) ? parseFloat(item.fiyat) : // Handle string fiyat
+      typeof item.price === 'number' ? item.price : 
+      (typeof item.price === 'string' && !isNaN(parseFloat(item.price))) ? parseFloat(item.price) : 0; // Handle string price
+    
+    const itemPriceFormatted = `₺${itemPrice.toFixed(2)}`;
+    const itemName = item.isim || item.name || 'Item';
+    const restaurantName = restaurant.isim || restaurant.name || 'Restaurant';
+    const uniqueId = `plan-${dayIndex}-${planId}-item-${Date.now()}`;
     
     const cartItem: CartItem = {
-      id: `item-${Date.now()}`,
+      id: uniqueId,
       restaurantId,
-      restaurantName: restaurant.isim || restaurant.name || 'Restaurant',
+      restaurantName,
       restaurantImage: restaurant.logoUrl || restaurant.image || 'https://via.placeholder.com/100',
       itemId,
-      itemName: item.isim || item.name || 'Item',
-      price: itemPrice,
+      itemName,
+      price: itemPriceFormatted, // HomeScreen'deki CartItem price string bekliyor
       quantity: 1,
       dayIndex,
       planId
     };
+    console.log('[HomeScreen][addItemToCart] localCartItem (for HomeScreen CartItem type) created:', cartItem);
     
-    // Add to cart (by day/plan)
     const cartKey = `${dayIndex}-${planId}`;
-    
     setCart(prevCart => {
       const updatedCart = { ...prevCart };
       if (!updatedCart[cartKey]) {
         updatedCart[cartKey] = [];
       }
       updatedCart[cartKey].push(cartItem);
+      console.log('[HomeScreen][addItemToCart] setCart CALLED. New cart for key', cartKey, ':', JSON.stringify(updatedCart[cartKey], null, 2));
       return updatedCart;
     });
     
-    // Add to header cart as well
     setHeaderCart(prev => [...prev, cartItem]);
-    
-    // Show cart actions
     setShowCartActions(true);
     
-    // Show added to cart message
     Alert.alert(
       t('cart.added'),
-      `${item.name || item.isim || 'Item'} ${t('cart.added.to')}`,
+      `${itemName} ${t('cart.added.to')}`,
       [{ text: 'OK', onPress: () => {} }],
       { cancelable: true }
     );
@@ -433,61 +472,173 @@ export default function HomeScreen() {
     
     setShowRestaurantSelection(false);
     setSelectedPlanInfo(null);
+    // Ensure we stay in weekly mode after completing meal selection
+    setOrderType("weekly");
   };
 
   // Add cart to selection
   const addCartToSelection = () => {
-    if (!selectedPlanInfo) return;
-    
+    console.log('[HomeScreen][addCartToSelection] TRIGGERED.');
+    console.log('[HomeScreen][addCartToSelection] current selectedPlanInfo:', selectedPlanInfo);
+    if (!selectedPlanInfo) {
+      console.error('[HomeScreen][addCartToSelection] selectedPlanInfo is NULL. Aborting.');
+      return;
+    }
+  
     const { dayIndex, planId } = selectedPlanInfo;
     const cartKey = `${dayIndex}-${planId}`;
-    const cartItems = cart[cartKey] || [];
-    
-    if (cartItems.length === 0) return;
-    
-    const updatedPlan = [...weeklyPlan];
-    const planIndex = updatedPlan[dayIndex].plans.findIndex(plan => plan.id === planId);
-    
-    if (planIndex >= 0) {
-      // Add cart items to plan selections
-      cartItems.forEach(item => {
-        updatedPlan[dayIndex].plans[planIndex].selections.push({
-          id: item.id,
-          restaurantName: item.restaurantName,
-          restaurantImage: item.restaurantImage,
-          itemName: item.itemName,
-          price: item.price
-        });
-      });
-      
-      setWeeklyPlan(updatedPlan);
-      
-      // Clear cart
-      setCart(prevCart => {
-        const updatedCart = { ...prevCart };
-        delete updatedCart[cartKey];
-        return updatedCart;
-      });
-      
-      // Clear header cart as well
-      setHeaderCart([]);
-      
-      setShowCartActions(false);
+    const localPlanCartItems = cart[cartKey] || []; // HomeScreen'de cart state CartItem[] tutuyor
+    console.log(`[HomeScreen][addCartToSelection] Items from local cart for key ${cartKey}:`, JSON.stringify(localPlanCartItems, null, 2));
+
+    if (localPlanCartItems.length === 0) {
+      console.log('[HomeScreen][addCartToSelection] No items in local cart to add. Aborting.');
+      return;
     }
+  
+    setWeeklyPlan(prevWeeklyPlan => {
+      console.log('[HomeScreen][addCartToSelection] setWeeklyPlan CALLED. prevWeeklyPlan (day of interest):\nDayIndex: ', dayIndex, 'PlanID: ', planId, 'Plan details:', JSON.stringify(prevWeeklyPlan[dayIndex]?.plans.find(p => p.id === planId), null, 2));
+      const newWeeklyPlan = prevWeeklyPlan.map((day, dIndex) => {
+        if (dIndex === dayIndex) {
+          const newPlans = day.plans.map(p => {
+            if (p.id === planId) {
+              console.log(`[HomeScreen][addCartToSelection] Updating plan: ${p.id} for day ${dIndex}`);
+              const newSelections: Selection[] = [...p.selections]; // HomeScreen'deki Selection price: string
+              
+              localPlanCartItems.forEach(localItem => {
+                console.log('[HomeScreen][addCartToSelection] Processing localItem for plan selection:', localItem);
+                newSelections.push({
+                  id: localItem.id,
+                  restaurantName: localItem.restaurantName,
+                  restaurantImage: localItem.restaurantImage,
+                  itemName: localItem.itemName,
+                  price: localItem.price // localItem.price zaten string (₺X.XX formatında)
+                });
+
+                // Global sepete ekleme (CartContext'teki addItem number price bekler)
+                const priceString = localItem.price.replace('₺', '').replace(',', '.');
+                const priceNumber = parseFloat(priceString);
+
+                console.log('[HomeScreen][addCartToSelection] Attempting to call global addItem for:', localItem.itemName, 'with planInfo:', { dayIndex, planId }, 'parsed price:', priceNumber);
+                if (!isNaN(priceNumber)) {
+                  try {
+                    addItem({
+                      id: localItem.id,
+                      name: localItem.itemName,
+                      price: priceNumber, // Number olarak gönder
+                      restaurantId: localItem.restaurantId,
+                      restaurantName: localItem.restaurantName,
+                      planInfo: { dayIndex, planId }
+                    });
+                    console.log(`[HomeScreen][addCartToSelection] Global addItem SUCCEEDED for: ${localItem.itemName}`);
+                  } catch (error) {
+                    console.error(`[HomeScreen][addCartToSelection] Global addItem FAILED for: ${localItem.itemName}`, error);
+                  }
+                } else {
+                  console.error(`[HomeScreen][addCartToSelection] Global addItem SKIPPED for: ${localItem.itemName} due to invalid price string:`, localItem.price);
+                }
+              });
+              console.log(`[HomeScreen][addCartToSelection] Plan ${p.id} newSelections:`, JSON.stringify(newSelections, null, 2));
+              return { ...p, selections: newSelections };
+            }
+            return p;
+          });
+          return { ...day, plans: newPlans };
+        }
+        return day;
+      });
+      
+      console.log('[HomeScreen][addCartToSelection] About to save to AsyncStorage and sync with global cart.');
+      try {
+        AsyncStorage.setItem('weeklyPlan', JSON.stringify(newWeeklyPlan));
+        console.log('[HomeScreen][addCartToSelection] weeklyPlan SAVED to AsyncStorage.');
+        
+        try {
+          const { syncWithWeeklyPlan } = useCart(); 
+          if (syncWithWeeklyPlan) {
+            syncWithWeeklyPlan(newWeeklyPlan);
+            console.log('[HomeScreen][addCartToSelection] Weekly plan synced with global cart');
+          }
+        } catch (error) {
+          console.error('[HomeScreen][addCartToSelection] Error syncing with global cart:', error);
+        }
+      } catch (error) {
+        console.error('[HomeScreen][addCartToSelection] Error saving weekly plan:', error);
+      }
+      return newWeeklyPlan;
+    });
+    
+    setCart(prevCart => {
+      const updatedCart = { ...prevCart };
+      delete updatedCart[cartKey];
+      console.log('[HomeScreen][addCartToSelection] Local cart for key', cartKey, 'CLEARED.');
+      return updatedCart;
+    });
+    setHeaderCart([]);
+    setShowCartActions(false);
+    console.log('[HomeScreen][addCartToSelection] FINISHED. Header cart cleared, actions hidden.');
   };
 
   // Remove a selection from a plan
   const removeSelection = (planId: string, selectionId: string) => {
-    const updatedPlan = [...weeklyPlan];
-    const currentDay = updatedPlan[activeDayIndex];
-    const planIndex = currentDay.plans.findIndex(plan => plan.id === planId);
-    
-    if (planIndex >= 0) {
-      currentDay.plans[planIndex].selections = currentDay.plans[planIndex].selections.filter(
-        selection => selection.id !== selectionId
-      );
-      setWeeklyPlan(updatedPlan);
-    }
+    // Use immutable update pattern
+    setWeeklyPlan(prevWeeklyPlan => {
+      const newWeeklyPlan = prevWeeklyPlan.map((day, dIndex) => {
+        if (dIndex === activeDayIndex) {
+          // Create a new copy of the day's plans
+          const newPlans = day.plans.map(p => {
+            if (p.id === planId) {
+              // Find the selection to be removed
+              const selectionToRemove = p.selections.find(
+                selection => selection.id === selectionId
+              );
+              
+              // Create a new copy of selections without the removed item
+              const newSelections = p.selections.filter(
+                selection => selection.id !== selectionId
+              );
+              
+              // Also try to remove from global cart if it exists there
+              if (selectionToRemove) {
+                try {
+                  removeItem(selectionId);
+                  console.log(`Removed item ${selectionId} from global cart`);
+                } catch (error) {
+                  console.error('Error removing from global cart:', error);
+                }
+              }
+              
+              return { ...p, selections: newSelections };
+            }
+            return p;
+          });
+          
+          return { ...day, plans: newPlans };
+        }
+        return day;
+      });
+      
+      // Save the updated weekly plan to AsyncStorage
+      try {
+        AsyncStorage.setItem('weeklyPlan', JSON.stringify(newWeeklyPlan));
+        console.log('Weekly plan saved to AsyncStorage after item removal');
+        
+        // Sync with global cart (if available)
+        try {
+          // Get syncWithWeeklyPlan function from CartContext
+          const { syncWithWeeklyPlan } = useCart();
+          if (syncWithWeeklyPlan) {
+            syncWithWeeklyPlan(newWeeklyPlan);
+            console.log('Weekly plan synced with global cart after item removal');
+          }
+        } catch (error) {
+          console.error('Error syncing with global cart:', error);
+        }
+      } catch (error) {
+        console.error('Error saving weekly plan:', error);
+      }
+      
+      return newWeeklyPlan;
+    });
   };
 
   // Calculate total cost of plan
@@ -580,341 +731,316 @@ export default function HomeScreen() {
 
       {/* White Content Section */}
       <View style={styles.whiteContainer}>
-        <ScrollView 
-          style={styles.contentContainer} 
-          bounces={true} 
-          showsVerticalScrollIndicator={false}
-          nestedScrollEnabled={true}
-        >
-          {/* Toggle for Weekly/Daily Selection - Now in white section */}
-          <View style={styles.toggleContainer}>
-            <View style={styles.toggleWrapper}>
-              <TouchableOpacity
-                style={[
-                  styles.toggleOption,
-                  styles.leftToggleOption,
-                  orderType === "weekly" && styles.activeToggle
-                ]}
-                activeOpacity={1.0}
-                onPress={() => {
-                  setOrderType("weekly");
-                  if (showRestaurantSelection) {
-                    closeRestaurantSelection();
-                  }
-                }}
-              >
-                <View style={styles.iconContainer}>
-                  <Svg width="24" height="24" viewBox="0 0 24 24">
-                    <G stroke={orderType === "weekly" ? "white" : "#777777"} fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <Rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <Line x1="16" y1="2" x2="16" y2="6" />
-                      <Line x1="8" y1="2" x2="8" y2="6" />
-                      <Line x1="3" y1="10" x2="21" y2="10" />
-                      <SvgText x="12" y="19" textAnchor="middle" fontSize="9" fontFamily="Arial" fill={orderType === "weekly" ? "white" : "#777777"}>7</SvgText>
-                    </G>
-                  </Svg>
-                </View>
-                <Text style={[
-                  styles.toggleText,
-                  orderType === "weekly" && styles.activeToggleText
-                ]}>Haftalık</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.toggleOption,
-                  styles.rightToggleOption,
-                  orderType === "daily" && styles.activeToggle
-                ]}
-                activeOpacity={1.0}
-                onPress={() => {
-                  setOrderType("daily");
-                  if (showRestaurantSelection) {
-                    closeRestaurantSelection();
-                  }
-                }}
-              >
-                <View style={styles.iconContainer}>
-                  <Svg width="24" height="24" viewBox="0 0 24 24">
-                    <G fill="none" stroke={orderType === "daily" ? "white" : "#777777"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <Circle cx="12" cy="12" r="10" />
-                      <Polyline points="12 6 12 12 16 14" />
-                    </G>
-                  </Svg>
-                </View>
-                <Text style={[
-                  styles.toggleText,
-                  orderType === "daily" && styles.activeToggleText
-                ]}>Günlük</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {showRestaurantSelection ? (
-            <RestaurantSelectionView
-              restaurants={restaurants as any}
-              onClose={closeRestaurantSelection}
-              onComplete={completeMealSelection}
-              onAddToCart={addItemToCart}
-              onViewRestaurant={viewRestaurantDetails}
-              loading={loading}
-              selectedDay={selectedDay?.name || ''}
-              selectedDate={selectedDay?.date || ''}
-              selectedTime={selectedPlan?.time || ''}
-              cartItemCount={getCurrentCartItemCount()}
-              cartTotal={calculateCartTotal()}
-              goToCart={() => navigation.navigate('Cart')}
-            />
-          ) : orderType === "weekly" ? (
-            // Weekly Plan Content
-            <>
-              {/* Days navigation - horizontal indicators */}
-              <View style={styles.dayNavigation}>
-                <TouchableOpacity style={styles.navArrow} onPress={goToPrevDay} disabled={activeDayIndex === 0}>
-                  <Text style={[styles.navArrowText, activeDayIndex === 0 && styles.disabledText]}>←</Text>
-                </TouchableOpacity>
-                
-                <View style={styles.dayIndicatorsContainer}>
-                  {weeklyPlan.map((day, index) => (
-                    <TouchableOpacity
-                      key={day.id}
-                      style={styles.dayIndicator}
-                      onPress={() => goToDay(index)}
-                    >
-                      <View style={[
-                        styles.dayCircle,
-                        index === activeDayIndex && styles.activeDayCircle,
-                        day.completed && styles.completedDayCircle
-                      ]}>
-                        <Text style={[
-                          styles.dayNumber,
-                          (index === activeDayIndex || day.completed) && styles.activeDayNumber
-                        ]}>{index + 1}</Text>
-                      </View>
-                      <Text style={styles.dayName}>{day.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                
-                <TouchableOpacity 
-                  style={styles.navArrow} 
-                  onPress={goToNextDay}
-                  disabled={activeDayIndex === weeklyPlan.length - 1}
+        {showRestaurantSelection ? (
+          <RestaurantSelectionView
+            restaurants={restaurants as any}
+            onClose={closeRestaurantSelection}
+            onComplete={completeMealSelection}
+            onAddToCart={addItemToCart}
+            onViewRestaurant={viewRestaurantDetails}
+            loading={loading}
+            selectedDay={selectedDay?.name || ''}
+            selectedDate={selectedDay?.date || ''}
+            selectedTime={selectedPlan?.time || ''}
+            cartItemCount={getCurrentCartItemCount()}
+            cartTotal={calculateCartTotal()}
+            goToCart={() => {
+              // First add items to the plan
+              if (getCurrentCartItemCount() > 0) {
+                addCartToSelection();
+              }
+              // Then navigate to cart
+              navigation.navigate('Cart');
+            }}
+          />
+        ) : (
+          <ScrollView 
+            style={styles.contentContainer} 
+            bounces={true} 
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            {/* Toggle for Weekly/Daily Selection - Now in white section */}
+            <View style={styles.toggleContainer}>
+              <View style={styles.toggleWrapper}>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleOption,
+                    styles.leftToggleOption,
+                    orderType === "weekly" && styles.activeToggle
+                  ]}
+                  activeOpacity={1.0}
+                  onPress={() => {
+                    setOrderType("weekly");
+                    if (showRestaurantSelection) {
+                      closeRestaurantSelection();
+                    }
+                  }}
                 >
+                  <View style={styles.iconContainer}>
+                    <Svg width="24" height="24" viewBox="0 0 24 24">
+                      <G stroke={orderType === "weekly" ? "white" : "#777777"} fill="none" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <Rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <Line x1="16" y1="2" x2="16" y2="6" />
+                        <Line x1="8" y1="2" x2="8" y2="6" />
+                        <Line x1="3" y1="10" x2="21" y2="10" />
+                        <SvgText x="12" y="19" textAnchor="middle" fontSize="9" fontFamily="Arial" fill={orderType === "weekly" ? "white" : "#777777"}>7</SvgText>
+                      </G>
+                    </Svg>
+                  </View>
                   <Text style={[
-                    styles.navArrowText,
-                    activeDayIndex === weeklyPlan.length - 1 && styles.disabledText
-                  ]}>→</Text>
+                    styles.toggleText,
+                    orderType === "weekly" && styles.activeToggleText
+                  ]}>Haftalık</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleOption,
+                    styles.rightToggleOption,
+                    orderType === "daily" && styles.activeToggle
+                  ]}
+                  activeOpacity={1.0}
+                  onPress={() => {
+                    setOrderType("daily");
+                    if (showRestaurantSelection) {
+                      closeRestaurantSelection();
+                    }
+                  }}
+                >
+                  <View style={styles.iconContainer}>
+                    <Svg width="24" height="24" viewBox="0 0 24 24">
+                      <G fill="none" stroke={orderType === "daily" ? "white" : "#777777"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <Circle cx="12" cy="12" r="10" />
+                        <Polyline points="12 6 12 12 16 14" />
+                      </G>
+                    </Svg>
+                  </View>
+                  <Text style={[
+                    styles.toggleText,
+                    orderType === "daily" && styles.activeToggleText
+                  ]}>Günlük</Text>
                 </TouchableOpacity>
               </View>
-              
-              {/* Day Content */}
-              <View style={styles.dayContent}>
-                <View style={styles.dayHeader}>
-                  <Text style={styles.dayTitle}>
-                    {weeklyPlan[activeDayIndex]?.name} - {weeklyPlan[activeDayIndex]?.date}
-                  </Text>
+            </View>
+
+            {orderType === "weekly" ? (
+              // Weekly Plan Content
+              <View>
+                {/* Days navigation - horizontal indicators */}
+                <View style={styles.dayNavigation}>
+                  <TouchableOpacity style={styles.navArrow} onPress={goToPrevDay} disabled={activeDayIndex === 0}>
+                    <Text style={[styles.navArrowText, activeDayIndex === 0 && styles.disabledText]}>←</Text>
+                  </TouchableOpacity>
                   
-                  <View style={styles.dayActions}>
-                    <TouchableOpacity 
-                      style={styles.addPlanButton}
-                      onPress={addNewPlan}
-                    >
-                      <Text style={styles.addPlanButtonText}>+ Yeni Plan Ekle</Text>
-                    </TouchableOpacity>
+                  <View style={styles.dayIndicatorsContainer}>
+                    {weeklyPlan.map((day, index) => (
+                      <TouchableOpacity
+                        key={day.id}
+                        style={styles.dayIndicator}
+                        onPress={() => goToDay(index)}
+                      >
+                        <View style={[
+                          styles.dayCircle,
+                          index === activeDayIndex && styles.activeDayCircle,
+                          day.completed && styles.completedDayCircle
+                        ]}>
+                          <Text style={[
+                            styles.dayNumber,
+                            (index === activeDayIndex || day.completed) && styles.activeDayNumber
+                          ]}>{index + 1}</Text>
+                        </View>
+                        <Text style={styles.dayName}>{day.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.navArrow} 
+                    onPress={goToNextDay}
+                    disabled={activeDayIndex === weeklyPlan.length - 1}
+                  >
+                    <Text style={[
+                      styles.navArrowText,
+                      activeDayIndex === weeklyPlan.length - 1 && styles.disabledText
+                    ]}>→</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Day Content */}
+                <View style={styles.dayContent}>
+                  <View style={styles.dayHeader}>
+                    <Text style={styles.dayTitle}>
+                      {weeklyPlan[activeDayIndex]?.name} - {weeklyPlan[activeDayIndex]?.date}
+                    </Text>
                     
-                    <TouchableOpacity 
-                      style={[
-                        styles.completeDayButton,
-                        weeklyPlan[activeDayIndex]?.completed && styles.disabledButton
-                      ]}
-                      onPress={completeCurrentDay}
-                      disabled={weeklyPlan[activeDayIndex]?.completed}
-                    >
-                      <Text style={styles.completeDayButtonText}>Günü Tamamla</Text>
-                    </TouchableOpacity>
+                    <View style={styles.dayActions}>
+                      <TouchableOpacity 
+                        style={styles.addPlanButton}
+                        onPress={addNewPlan}
+                      >
+                        <Text style={styles.addPlanButtonText}>+ Yeni Plan Ekle</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={[
+                          styles.completeDayButton,
+                          weeklyPlan[activeDayIndex]?.completed && styles.disabledButton
+                        ]}
+                        onPress={completeCurrentDay}
+                        disabled={weeklyPlan[activeDayIndex]?.completed}
+                      >
+                        <Text style={styles.completeDayButtonText}>Günü Tamamla</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.planSlotsContainer}>
+                    {weeklyPlan[activeDayIndex]?.plans.map(plan => (
+                      <View key={plan.id} style={styles.planSlot}>
+                        <View style={styles.planHeader}>
+                          <Text style={styles.planName}>{plan.name}</Text>
+                          <TouchableOpacity 
+                            style={styles.timeSelector}
+                            onPress={() => openTimePicker(plan.id)}
+                          >
+                            <Text style={styles.selectedTime}>{plan.time}</Text>
+                            <Text style={styles.timeNote}>Saati değiştirmek için tıklayın</Text>
+                          </TouchableOpacity>
+                        </View>
+                        
+                        <View style={styles.selectionsContainer}>
+                          {plan.selections.length > 0 ? (
+                            plan.selections.map(selection => (
+                              <View key={selection.id} style={styles.mealSelection}>
+                                <Image 
+                                  source={{ uri: selection.restaurantImage || 'https://via.placeholder.com/100' }}
+                                  style={styles.mealThumbnail}
+                                />
+                                <View style={styles.mealInfo}>
+                                  <Text style={styles.mealName} numberOfLines={1}>{selection.itemName}</Text>
+                                  <Text style={styles.mealRestaurant} numberOfLines={1}>{selection.restaurantName}</Text>
+                                </View>
+                                <Text style={styles.mealPrice}>{selection.price}</Text>
+                                <TouchableOpacity 
+                                  style={styles.removeMealButton}
+                                  onPress={() => removeSelection(plan.id, selection.id)}
+                                >
+                                  <Text style={styles.removeMealButtonText}>×</Text>
+                                </TouchableOpacity>
+                              </View>
+                            ))
+                          ) : (
+                            <TouchableOpacity 
+                              style={styles.addMealButton}
+                              onPress={() => openRestaurantSelection(plan.id)}
+                            >
+                              <Text style={styles.addMealButtonText}>+ Yemek Ekle</Text>
+                            </TouchableOpacity>
+                          )}
+                          
+                          {plan.selections.length > 0 && (
+                            <TouchableOpacity 
+                              style={styles.addMoreButton}
+                              onPress={() => openRestaurantSelection(plan.id)}
+                            >
+                              <Text style={styles.addMoreButtonText}>+ Daha Fazla Yemek Ekle</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    ))}
                   </View>
                 </View>
                 
-                <View style={styles.planSlotsContainer}>
-                  {weeklyPlan[activeDayIndex]?.plans.map(plan => (
-                    <View key={plan.id} style={styles.planSlot}>
-                      <View style={styles.planHeader}>
-                        <Text style={styles.planName}>{plan.name}</Text>
-                        <TouchableOpacity 
-                          style={styles.timeSelector}
-                          onPress={() => openTimePicker(plan.id)}
-                        >
-                          <Text style={styles.selectedTime}>{plan.time}</Text>
-                          <Text style={styles.timeNote}>Saati değiştirmek için tıklayın</Text>
-                        </TouchableOpacity>
-                      </View>
-                      
-                      <View style={styles.selectionsContainer}>
-                        {plan.selections.length > 0 ? (
-                          plan.selections.map(selection => (
-                            <View key={selection.id} style={styles.mealSelection}>
-                              <Image 
-                                source={{ uri: selection.restaurantImage || 'https://via.placeholder.com/100' }}
-                                style={styles.mealThumbnail}
-                              />
-                              <View style={styles.mealInfo}>
-                                <Text style={styles.mealName} numberOfLines={1}>{selection.itemName}</Text>
-                                <Text style={styles.mealRestaurant} numberOfLines={1}>{selection.restaurantName}</Text>
-                              </View>
-                              <Text style={styles.mealPrice}>{selection.price}</Text>
-                              <TouchableOpacity 
-                                style={styles.removeMealButton}
-                                onPress={() => removeSelection(plan.id, selection.id)}
-                              >
-                                <Text style={styles.removeMealButtonText}>×</Text>
-                              </TouchableOpacity>
+                {/* Footer with Total */}
+                <View style={styles.footer}>
+                  <TouchableOpacity 
+                    style={[styles.checkoutButton, {width: '100%'}]} 
+                    onPress={() => navigation.navigate('Cart')}
+                  >
+                    <Text style={styles.checkoutButtonText}>Siparişi Tamamla</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              // Daily Content (Restaurants)
+              <>
+                {/* Categories */}
+                <View style={styles.categoriesContainer}>
+                  <Text style={styles.sectionTitle}>{t('home.popularCategories')}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
+                    {[
+                      {key: 'pizza', label: t('category.pizza')},
+                      {key: 'burger', label: t('category.burger')},
+                      {key: 'kebap', label: t('category.kebap')},
+                      {key: 'cigkofte', label: 'Çiğ Köfte'},
+                      {key: 'dessert', label: t('category.dessert')}
+                    ].map((category, index) => (
+                      <TouchableOpacity 
+                        key={index} 
+                        style={styles.categoryItem} 
+                        activeOpacity={1.0}
+                        onPress={() => navigation.navigate('Search', { categoryFilter: category.label })}
+                      >
+                        <Text style={styles.categoryText}>{category.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+
+                {/* Restaurants */}
+                <View style={styles.restaurantsContainer}>
+                  <Text style={styles.sectionTitle}>{t('home.popularRestaurants')}</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#00B2FF" size="large" style={styles.loader} />
+                  ) : restaurants.length > 0 ? (
+                    restaurants.map((restaurant) => (
+                      <TouchableOpacity
+                        key={restaurant.id}
+                        style={styles.restaurantItem}
+                        activeOpacity={1.0}
+                        onPress={() => navigation.navigate("MenuSelection", { 
+                          orderType, 
+                          restaurantId: restaurant.id 
+                        })}
+                      >
+                        <View style={styles.restaurantImagePlaceholder}>
+                          {restaurant.logoUrl ? (
+                            <Image source={{ uri: restaurant.logoUrl }} style={styles.restaurantImage} />
+                          ) : (
+                            <View style={styles.restaurantImageFallback}>
+                              <Text style={styles.restaurantImageFallbackText}>
+                                {restaurant.isim.charAt(0)}
+                              </Text>
                             </View>
-                          ))
-                        ) : (
-                          <TouchableOpacity 
-                            style={styles.addMealButton}
-                            onPress={() => openRestaurantSelection(plan.id)}
-                          >
-                            <Text style={styles.addMealButtonText}>+ Yemek Ekle</Text>
-                          </TouchableOpacity>
-                        )}
-                        
-                        {plan.selections.length > 0 && (
-                          <TouchableOpacity 
-                            style={styles.addMoreButton}
-                            onPress={() => openRestaurantSelection(plan.id)}
-                          >
-                            <Text style={styles.addMoreButtonText}>+ Daha Fazla Yemek Ekle</Text>
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              </View>
-              
-              {/* Footer with Total */}
-              <View style={styles.footer}>
-                <View style={styles.totalContainer}>
-                  <Text style={styles.totalLabel}>Toplam:</Text>
-                  <Text style={styles.totalAmount}>₺{calculateTotalCost().toFixed(2)}</Text>
-                </View>
-                <TouchableOpacity style={styles.checkoutButton} onPress={() => navigation.navigate('Cart')}>
-                  <Text style={styles.checkoutButtonText}>Siparişi Tamamla</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            // Daily Content (Restaurants)
-            <>
-              {/* Categories */}
-              <View style={styles.categoriesContainer}>
-                <Text style={styles.sectionTitle}>{t('home.popularCategories')}</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-                  {[
-                    {key: 'pizza', label: t('category.pizza')},
-                    {key: 'burger', label: t('category.burger')},
-                    {key: 'kebap', label: t('category.kebap')},
-                    {key: 'cigkofte', label: 'Çiğ Köfte'},
-                    {key: 'dessert', label: t('category.dessert')}
-                  ].map((category, index) => (
-                    <TouchableOpacity 
-                      key={index} 
-                      style={styles.categoryItem} 
-                      activeOpacity={1.0}
-                      onPress={() => navigation.navigate('Search', { categoryFilter: category.label })}
-                    >
-                      <Text style={styles.categoryText}>{category.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-
-              {/* Restaurants */}
-              <View style={styles.restaurantsContainer}>
-                <Text style={styles.sectionTitle}>{t('home.popularRestaurants')}</Text>
-                {loading ? (
-                  <ActivityIndicator color="#00B2FF" size="large" style={styles.loader} />
-                ) : restaurants.length > 0 ? (
-                  restaurants.map((restaurant) => (
-                    <TouchableOpacity
-                      key={restaurant.id}
-                      style={styles.restaurantItem}
-                      activeOpacity={1.0}
-                      onPress={() => navigation.navigate("MenuSelection", { 
-                        orderType, 
-                        restaurantId: restaurant.id 
-                      })}
-                    >
-                      <View style={styles.restaurantImagePlaceholder}>
-                        {restaurant.logoUrl ? (
-                          <Image source={{ uri: restaurant.logoUrl }} style={styles.restaurantImage} />
-                        ) : (
-                          <View style={styles.restaurantImageFallback}>
-                            <Text style={styles.restaurantImageFallbackText}>
-                              {restaurant.isim.charAt(0)}
+                          )}
+                        </View>
+                        <View style={styles.restaurantInfo}>
+                          <Text style={styles.restaurantName}>{restaurant.isim}</Text>
+                          <Text style={styles.restaurantDescription}>{restaurant.kategori}</Text>
+                          {restaurant.adres && (
+                            <Text style={styles.restaurantAddress} numberOfLines={1}>
+                              {restaurant.adres}
                             </Text>
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.restaurantInfo}>
-                        <Text style={styles.restaurantName}>{restaurant.isim}</Text>
-                        <Text style={styles.restaurantDescription}>{restaurant.kategori}</Text>
-                        {restaurant.adres && (
-                          <Text style={styles.restaurantAddress} numberOfLines={1}>
-                            {restaurant.adres}
-                          </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  <Text style={styles.noRestaurants}>{t('restaurant.none')}</Text>
-                )}
-              </View>
-            </>
-          )}
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <Text style={styles.noRestaurants}>{t('restaurant.none')}</Text>
+                  )}
+                </View>
+              </>
+            )}
 
-          {/* Bottom spacing */}
-          <View style={styles.bottomSpacing} />
-        </ScrollView>
+            {/* Bottom spacing */}
+            <View style={styles.bottomSpacing} />
+          </ScrollView>
+        )}
       </View>
 
       {/* Bottom Tab Bar */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity style={[styles.tabItem, styles.activeTabItem]} activeOpacity={1.0}>
-          <Image source={restaurantIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.food')}</Text>
-          <View style={styles.activeIndicator} />
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Search')}
-        >
-          <Image source={searchIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.search')}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Orders')}
-        >
-          <Image source={orderIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.orders')}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Profile')}
-        >
-          <Image source={userIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.profile')}</Text>
-        </TouchableOpacity>
-      </View>
+      <BottomTabBar activeTab="Home" t={t} />
 
       {/* Time Picker Modal */}
       <TimePicker
@@ -1203,57 +1329,6 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: Platform.OS === 'ios' ? 100 : 80,
   },
-  bottomTabBar: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#e1e1e1',
-    backgroundColor: 'white',
-    height: Platform.OS === 'ios' ? 80 : 60,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 0,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    width: '100%',
-    zIndex: 100,
-  },
-  tabItem: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 8,
-    position: 'relative',
-  },
-  activeTabItem: {
-    position: 'relative',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    width: 40,
-    height: 3,
-    backgroundColor: '#00B2FF',
-    alignSelf: 'center',
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-  },
-  tabIcon: {
-    width: 24,
-    height: 24,
-    tintColor: '#888',
-  },
-  activeTabIcon: {
-    tintColor: '#00B2FF',
-  },
-  tabLabel: {
-    fontSize: 12,
-    marginTop: 2,
-    color: '#888',
-  },
-  activeTabLabel: {
-    color: '#00B2FF',
-    fontWeight: '500',
-  },
   loader: {
     marginVertical: 20,
   },
@@ -1525,21 +1600,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 60,
-  },
-  totalContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 5,
-    color: '#333',
-  },
-  totalAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#00B2FF',
   },
   checkoutButton: {
     backgroundColor: '#00B2FF',

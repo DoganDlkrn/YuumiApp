@@ -20,6 +20,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useLanguage } from "../context/LanguageContext";
 import Svg, { G, Path } from "react-native-svg";
 import { useLocation } from '../context/LocationContext';
+import BottomTabBar from '../components/BottomTabBar';
 
 // Import images
 const searchIcon: ImageSourcePropType = require('../assets/images/search-interface-symbol.png');
@@ -159,62 +160,7 @@ export default function ProfileScreen() {
       </View>
 
       {/* Bottom Tab Bar */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Home' as never)}
-        >
-          <Image source={restaurantIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.food')}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Search' as never)}
-        >
-          <Image source={searchIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.search')}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={styles.tabItem}
-          activeOpacity={1.0}
-          onPress={() => navigation.navigate('Orders' as never)}
-        >
-          <Image source={orderIcon} style={styles.tabIcon} />
-          <Text style={styles.tabLabel}>{t('tabs.orders')}</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tabItem, styles.activeTabItem]}
-          activeOpacity={1.0}
-        >
-          <Image source={userIcon} style={[styles.tabIcon, styles.activeTabIcon]} />
-          <Text style={[styles.tabLabel, styles.activeTabLabel]}>{t('tabs.profile')}</Text>
-          <View style={styles.activeIndicator} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Profile Options */}
-      <View style={styles.profileOptionsContainer}>
-        <TouchableOpacity
-          style={styles.profileOptionItem}
-          onPress={() => navigation.navigate('Addresses')}
-        >
-          <Image
-            source={require('../assets/images/placeholder.png')}
-            style={styles.menuItemIcon}
-          />
-          <Text style={styles.profileOptionText}>
-            {t('profile.addresses') || 'Adreslerim'}
-          </Text>
-          <Text style={styles.profileOptionArrow}>›</Text>
-        </TouchableOpacity>
-        
-        {/* ... the rest of your existing profile options ... */}
-      </View>
+      <BottomTabBar activeTab="Profile" t={t} />
     </SafeAreaView>
   );
 }
@@ -328,68 +274,17 @@ const lightStyles = StyleSheet.create({
   bottomSpacing: {
     height: 100,
   },
-  bottomTabBar: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#e1e1e1',
-    backgroundColor: 'white',
-    height: Platform.OS === 'ios' ? 80 : 60,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 0,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    width: '100%',
-    zIndex: 100,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-  },
-  activeTabItem: {
-    position: 'relative',
-  },
-  tabIcon: {
-    width: 22,
-    height: 22,
-    tintColor: '#aaa',
-    marginBottom: 5,
-  },
-  activeTabIcon: {
-    tintColor: '#00B2FF',
-  },
-  tabLabel: {
-    fontSize: 12,
-    color: '#aaa',
-  },
-  activeTabLabel: {
-    color: '#00B2FF',
-    fontWeight: 'bold',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    width: 40,
-    height: 3,
-    backgroundColor: '#00B2FF',
-    borderTopLeftRadius: 1.5,
-    borderTopRightRadius: 1.5,
-  },
-  menuItemIcon: {
-    width: 22,
-    height: 22,
-    marginRight: 10,
-    tintColor: '#00B2FF',
-  },
   profileOptionsContainer: {
+    backgroundColor: 'white',
     padding: 16,
+    marginBottom: 20,
   },
   profileOptionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
   profileOptionText: {
     fontSize: 15,
@@ -400,6 +295,12 @@ const lightStyles = StyleSheet.create({
     color: '#bbb',
     fontSize: 22,
     marginLeft: 8,
+  },
+  menuItemIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 10,
+    tintColor: '#00B2FF',
   },
 });
 
@@ -512,63 +413,9 @@ const darkStyles = StyleSheet.create({
   bottomSpacing: {
     height: 100,
   },
-  bottomTabBar: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#e1e1e1',
-    backgroundColor: 'white',
-    height: Platform.OS === 'ios' ? 80 : 60,
-    paddingBottom: Platform.OS === 'ios' ? 25 : 0,
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    width: '100%',
-    zIndex: 100,
-  },
-  tabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-  },
-  activeTabItem: {
-    position: 'relative',
-  },
-  tabIcon: {
-    width: 22,
-    height: 22,
-    tintColor: '#777',
-    marginBottom: 5,
-  },
-  activeTabIcon: {
-    tintColor: '#1e88e5',
-  },
-  tabLabel: {
-    fontSize: 12,
-    color: '#777',
-  },
-  activeTabLabel: {
-    color: '#1e88e5',
-    fontWeight: 'bold',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    width: 40,
-    height: 3,
-    backgroundColor: '#1e88e5',
-    borderTopLeftRadius: 1.5,
-    borderTopRightRadius: 1.5,
-  },
-  menuItemIcon: {
-    width: 22,
-    height: 22,
-    marginRight: 10,
-    tintColor: '#64b5f6',
-  },
   profileOptionsContainer: {
-    padding: 16,
+    backgroundColor: 'white',
+    marginBottom: 20,
   },
   profileOptionItem: {
     flexDirection: 'row',
@@ -577,12 +424,18 @@ const darkStyles = StyleSheet.create({
   },
   profileOptionText: {
     fontSize: 15,
-    color: '#eee',
+    color: '#333',
     flex: 1,
   },
   profileOptionArrow: {
-    color: '#777',
+    color: '#bbb',
     fontSize: 22,
     marginLeft: 8,
+  },
+  menuItemIcon: {
+    width: 22,
+    height: 22,
+    marginRight: 10,
+    tintColor: '#64b5f6',
   },
 }); 

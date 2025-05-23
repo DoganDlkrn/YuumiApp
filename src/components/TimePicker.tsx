@@ -104,7 +104,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
     <Modal
       visible={visible}
       transparent={true}
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>

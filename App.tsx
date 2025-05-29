@@ -1,3 +1,35 @@
+/*
+ * ANA UYGULAMA KOMPONENTİ (App.tsx)
+ * 
+ * Bu dosya uygulamanın kök bileşenidir ve şu sistemleri organize eder:
+ * 
+ * 1. CONTEXT PROVİDER'LAR:
+ *    - ThemeProvider: Açık/koyu tema yönetimi
+ *    - LanguageProvider: Çoklu dil desteği (TR/EN)
+ *    - AuthProvider: Firebase kimlik doğrulama
+ *    - CartProvider: Sepet verilerini global yönetim
+ * 
+ * 2. NAVİGASYON SİSTEMİ:
+ *    - React Navigation v6 ile ekranlar arası geçiş
+ *    - Animasyonları kapatılmış performans için
+ *    - CustomNavigationContainer ile özelleştirilmiş
+ * 
+ * 3. HATA YÖNETİMİ:
+ *    - ErrorBoundary ile uygulama seviyesi hata yakalama
+ *    - Dil bazlı hata mesajları
+ *    - Graceful error recovery sistemi
+ * 
+ * 4. BAŞLANGIÇ EKRANI:
+ *    - 1.5 saniye splash screen
+ *    - Animasyonlu Yuumi logosu
+ *    - Mavi markalama rengi (#00B2FF)
+ * 
+ * 5. PERFORMANS OPTİMİZASYONU:
+ *    - enableScreens(true) ile React Native Screens
+ *    - Animasyonlar devre dışı
+ *    - detachInactiveScreens=true
+ */
+
 // App.tsx
 import React, { useState, useEffect, ErrorInfo, useContext } from "react";
 import { StyleSheet, StatusBar, View, Text, TouchableOpacity, Platform, UIManager } from "react-native";

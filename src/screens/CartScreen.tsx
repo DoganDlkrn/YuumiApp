@@ -1,3 +1,26 @@
+/*
+ * SEPET YÖNETİM SİSTEMİ (CartScreen & CartProvider)
+ * 
+ * Bu dosya iki ana bileşen içerir:
+ * 
+ * 1. CARTPROVIDER (Context API):
+ *    - Uygulama genelinde sepet verilerini yönetir
+ *    - AsyncStorage ile kalıcı veri saklama
+ *    - Sepete ürün ekleme/çıkarma işlemleri
+ *    - Haftalık plan ile senkronizasyon
+ * 
+ * 2. CARTSCREEN (UI Komponenti):
+ *    - Sepet içeriğini görsel olarak listeler
+ *    - Restoran bazlı gruplama yapar
+ *    - Miktar artırma/azaltma kontrolleri
+ *    - Sipariş tamamlama işlevi
+ * 
+ * Önemli Özellikler:
+ * - items: CartItem[] - Sepetteki tüm ürünler
+ * - planInfo - Haftalık plan ile ilişkili ürünler için ek bilgi
+ * - syncWithWeeklyPlan() - Haftalık plan değişikliklerini sepete yansıtır
+ */
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -55,6 +78,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
+  // AsyncStorage'dan sepeti yükleme - uygulama başlatıldığında çalışır
   // Load cart from AsyncStorage on mount
   useEffect(() => {
     const loadCart = async () => {
@@ -77,6 +101,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     loadCart();
   }, []);
 
+  // Sepet değişikliklerini AsyncStorage'a kaydetme - her değişiklikte otomatik çalışır
   // Save cart to AsyncStorage whenever it changes
   useEffect(() => {
     const saveCart = async () => {
@@ -95,12 +120,14 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [items]);
 
+  // Sepete yeni ürün ekleme veya mevcut ürünün miktarını artırma
   // Add an item to the cart
   const addItem = (item: Omit<CartItem, 'quantity'>) => {
     console.log(`➕ CONTEXT: Adding item: ${item.name}, ID: ${item.id}, PlanInfo: ${JSON.stringify(item.planInfo)}`);
     setItems(currentItems => {
       const existingItemIndex = currentItems.findIndex(i => i.id === item.id);
       if (existingItemIndex >= 0) {
+        // Mevcut ürünün miktarını artır
         const updatedItems = [...currentItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
@@ -114,6 +141,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         console.log(`📝 CONTEXT: Updated quantity for ${item.name} to ${updatedItems[existingItemIndex].quantity}`);
         return updatedItems;
       } else {
+        // Yeni ürün ekle
         const newItem = { ...item, quantity: 1 };
         console.log('➕ CONTEXT: Adding new item:', JSON.stringify(newItem, null, 2));
         return [...currentItems, newItem];
@@ -122,6 +150,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return true;
   };
 
+  // Belirli miktar ile ürün ekleme (direkt miktar ayarlama)
   const addItemWithQuantity = (item: Omit<CartItem, 'quantity'>, quantity: number) => {
     if (quantity <= 0) return;
     console.log(`➕ CONTEXT: Adding ${quantity} of ${item.name} with quantity`);
@@ -145,6 +174,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
   };
 
+  // Sepetten ürün çıkarma veya miktarını azaltma
   const removeItem = (itemId: string) => {
     console.log(`➖ CONTEXT: Removing item ID: ${itemId}`);
     setItems(currentItems => {
@@ -152,10 +182,12 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (existingItemIndex >= 0) {
         const updatedItems = [...currentItems];
         if (updatedItems[existingItemIndex].quantity > 1) {
+          // Miktarı azalt
           updatedItems[existingItemIndex].quantity -= 1;
           console.log(`➖ CONTEXT: Decreased quantity for ${updatedItems[existingItemIndex].name}`);
           return updatedItems;
         } else {
+          // Ürünü tamamen çıkar
           updatedItems.splice(existingItemIndex, 1);
           console.log(`➖ CONTEXT: Removed item ${itemId} completely`);
           return updatedItems;
@@ -191,33 +223,41 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  // Haftalık plan ile sepet senkronizasyonu - plan değişikliklerini sepete yansıtır
   const syncWithWeeklyPlan = (weeklyPlan: DayPlan[]) => { // DayPlan tipini kullan
     console.log('🔄 CONTEXT: Synchronizing cart with weekly plan');
     try {
       setItems(currentItems => {
+        // Haftalık plana ait olmayan öğeleri koru (normal sipariş ürünleri)
         const regularItems = currentItems.filter(item => !item.planInfo);
         console.log(`🔄 CONTEXT: Preserved ${regularItems.length} regular items`);
         
+        // Haftalık plandaki tüm seçimleri sepet ürünlerine dönüştür
         const planItems: CartItem[] = [];
         weeklyPlan.forEach((day, dayIndex) => {
           day.plans.forEach(plan => {
             plan.selections.forEach(selection => {
               try {
+                // Price'ı her zaman number'a dönüştür
                 let priceAsNumber = 0;
                 if (typeof selection.price === 'string') {
-                  priceAsNumber = parseFloat(selection.price.replace('₺', '').replace(',', '.'));
-                  if (isNaN(priceAsNumber)) priceAsNumber = 0;
+                  priceAsNumber = parseFloat(String(selection.price).replace('₺', '').replace(',', '.'));
                 } else if (typeof selection.price === 'number') {
                   priceAsNumber = selection.price;
                 }
                 
+                if (isNaN(priceAsNumber)) priceAsNumber = 0;
+                
+                // restaurantId alanını kontrol et
+                const restaurantId = selection.restaurantId || 'unknown_restaurant';
+                
                 planItems.push({
-                  id: selection.id, // Bu ID'ler haftalık plandan geliyor
+                  id: selection.id,
                   name: selection.itemName,
                   price: priceAsNumber,
-                  restaurantId: (selection as any).restaurantId || 'unknown', // restaurantId eksik olabilir
+                  restaurantId: restaurantId,
                   restaurantName: selection.restaurantName,
-                  quantity: 1, // Her zaman 1 olarak varsayıyoruz, çünkü sync global sepeti planla eşliyor
+                  quantity: 1,
                   planInfo: {
                     dayIndex,
                     planId: plan.id
@@ -295,11 +335,10 @@ interface Plan { // Plan interface (DayPlan için)
 
 interface Selection { // Selection interface (Plan için)
   id: string;
-  // restaurantId: string; // Bu CartItem'da var, burada zorunlu değilse kaldırılabilir
+  restaurantId: string; // Bu alan zorunlu olmalı
   restaurantName: string;
-  // restaurantImage: string; // Bu CartItem'da var
   itemName: string;
-  price: string | number; // price string ya da number olabilir
+  price: number; // Her zaman number olmalı
 }
 
 type CartScreenNavProp = StackNavigationProp<RootStackParamList, 'Cart'>;
@@ -351,7 +390,7 @@ export default function CartScreen() {
     return groups;
   }, [items]);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (items.length === 0) {
       return;
     }
@@ -366,10 +405,43 @@ export default function CartScreen() {
         },
         {
           text: t('cart.checkout'),
-          onPress: () => {
-            Alert.alert('Başarılı', 'Siparişiniz alınmıştır.');
-            clearCart();
-            navigation.navigate('Home');
+          onPress: async () => {
+            try {
+              console.log('[CartScreen][handleCheckout] Sipariş işlemi başlatılıyor');
+              
+              // Sipariş bilgilerini kaydet
+              const orderData = {
+                items: [...items], // Sepet öğelerinin kopyasını al
+                timestamp: Date.now()
+              };
+              
+              await AsyncStorage.setItem('@new_order_data', JSON.stringify(orderData));
+              await AsyncStorage.setItem('@new_order_from_cart', 'true');
+              console.log('[CartScreen][handleCheckout] Sipariş verileri ve işaretçi kaydedildi');
+              
+              // Sepeti temizle
+              clearCart();
+              console.log('[CartScreen][handleCheckout] Sepet temizlendi');
+              
+              // Başarı mesajını göster ve yönlendir
+              Alert.alert(t('success'), t('order.received'), [
+                {
+                  text: 'Tamam',
+                  onPress: () => {
+                    // Siparişler sayfasına yönlendir
+                    navigation.navigate('Orders');
+                    console.log('[CartScreen][handleCheckout] Orders sayfasına yönlendirildi');
+                  }
+                }
+              ]);
+              
+            } catch (error) {
+              console.error('[CartScreen][handleCheckout] Sipariş işlemi sırasında hata:', error);
+              
+              // Hata durumunda da sepeti temizle ve yönlendir
+              clearCart();
+              navigation.navigate('Orders');
+            }
           }
         }
       ]
@@ -401,7 +473,7 @@ export default function CartScreen() {
               <Text style={styles.cartItemName}>{item.name}</Text>
               {item.planInfo && (
                 <Text style={styles.planInfoText}>
-                  {`Plan: Gün ${item.planInfo.dayIndex + 1}, Plan ID: ${item.planInfo.planId.substring(0,6)}...`}
+                  {`Plan: Gün ${item.planInfo.dayIndex + 1}`}
                 </Text>
               )}
               <View style={styles.cartItemPriceRow}>
@@ -435,7 +507,8 @@ export default function CartScreen() {
         ))}
         
         <View style={styles.restaurantTotal}>
-          <Text style={styles.restaurantTotalText}>{t('subtotal')}</Text>
+          <Text style={styles.restaurantTotalText}>Ödenecek Ücret</Text>
+          <View style={{flex: 1}}></View>
           <Text style={styles.restaurantTotalAmount}>
             {restaurantItems.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2)} ₺
           </Text>
@@ -479,7 +552,7 @@ export default function CartScreen() {
                   style={styles.checkoutButton}
                   onPress={handleCheckout}
                 >
-                  <Text style={styles.checkoutButtonText}>{t('completeOrder')}</Text>
+                  <Text style={styles.checkoutButtonText}>Siparişi Tamamla</Text>
                 </TouchableOpacity>
               </View>
             }
@@ -604,6 +677,7 @@ const lightStyles = StyleSheet.create({
   quantitySelector: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginLeft: -10,
   },
   quantityButton: {
     width: 28,

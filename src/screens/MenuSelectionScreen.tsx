@@ -23,6 +23,7 @@ import TouchableWithoutFeedback from "../components/TouchableWithoutFeedback";
 import { useCart } from "./CartScreen";
 import { useLanguage } from "../context/LanguageContext";
 import LoadingOverlay from "../components/LoadingOverlay";
+import FloatingActionBar from "../components/FloatingActionBar";
 
 type MenuSelectionScreenRouteProp = RouteProp<RootStackParamList, "MenuSelection">;
 type MenuSelectionScreenNavProp = StackNavigationProp<RootStackParamList, "MenuSelection">;
@@ -137,6 +138,31 @@ export default function MenuSelectionScreen() {
   const filteredMenuItems = activeCategory === ""
     ? menuItems
     : menuItems.filter(item => item.description?.includes(activeCategory));
+
+  // Calculate current selection stats for FloatingActionBar
+  const currentSelectionItemCount = Object.values(mealQuantities).reduce((sum, qty) => sum + qty, 0);
+  const currentSelectionTotalPrice = Object.keys(mealQuantities).reduce((total, mealId) => {
+    const meal = menuItems.find(item => item.id === mealId);
+    const quantity = mealQuantities[mealId] || 0;
+    if (meal && quantity > 0) {
+      return total + (meal.price * quantity);
+    }
+    return total;
+  }, 0);
+
+  // Handle go to cart for daily orders
+  const handleGoToCartDaily = () => {
+    console.log("Günlük Sipariş - Sepete Git tıklandı");
+    if (currentSelectionItemCount > 0) {
+      // First add items to cart, then navigate
+      handleAddToCart();
+      setTimeout(() => {
+        navigation.navigate('Cart');
+      }, 500); // Small delay to ensure items are added
+    } else {
+      navigation.navigate('Cart');
+    }
+  };
 
   // Increment quantity for a meal
   const incrementQuantity = (mealId: string) => {
@@ -438,21 +464,18 @@ export default function MenuSelectionScreen() {
           ))}
         </ScrollView>
         
-        {/* Add To Cart Button */}
-        {Object.keys(mealQuantities).length > 0 && (
-          <View style={styles.addToCartContainer}>
-            <TouchableOpacity
-              style={styles.addToCartButton}
-              onPress={handleAddToCart}
-              activeOpacity={1.0}
-            >
-              <Text style={styles.addToCartButtonText}>
-                {Object.values(mealQuantities).reduce((a, b) => a + b, 0)} ürün seçildi - Sepete Ekle
-              </Text>
-            </TouchableOpacity>
-          </View>
-        )}
+
       </View>
+
+      {/* FloatingActionBar - Show when items are selected */}
+      {currentSelectionItemCount > 0 && (
+        <FloatingActionBar
+          itemCount={currentSelectionItemCount}
+          totalPrice={currentSelectionTotalPrice}
+          onGoToCart={handleGoToCartDaily}
+          showContinueButton={false}
+        />
+      )}
 
       {/* Added to Cart Notification */}
       {showAddedToCartMessage && (
@@ -618,23 +641,7 @@ const lightStyles = StyleSheet.create({
     width: 25,
     textAlign: 'center',
   },
-  addToCartContainer: {
-    padding: 16,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  addToCartButton: {
-    backgroundColor: '#00B2FF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  addToCartButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+
   textMessage: {
     fontSize: 16,
     color: "#777",
@@ -841,23 +848,7 @@ const darkStyles = StyleSheet.create({
     textAlign: 'center',
     color: '#fff',
   },
-  addToCartContainer: {
-    padding: 16,
-    backgroundColor: '#1e1e1e',
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-  addToCartButton: {
-    backgroundColor: '#1e88e5',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  addToCartButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
+
   textMessage: {
     fontSize: 16,
     color: '#bbb',

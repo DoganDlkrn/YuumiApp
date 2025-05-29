@@ -1,3 +1,36 @@
+/*
+ * ARAMA EKRANI (SearchScreen)
+ * 
+ * Bu ekran uygulamada arama işlevlerini yönetir:
+ * 
+ * Ana Özellikler:
+ * 1. ARAMA SİSTEMİ:
+ *    - Gerçek zamanlı arama (yazarken anlık sonuç)
+ *    - Kategori ve restoran bazlı filtreleme
+ *    - Firestore'dan restoran verilerini çekme
+ * 
+ * 2. SON ARAMALAR:
+ *    - AsyncStorage ile geçmiş aramaları kaydetme
+ *    - Hızlı erişim için son 5 aramayı gösterme
+ *    - Otomatik temizleme ve güncelleme
+ * 
+ * 3. KATEGORİ ÖNERİLERİ:
+ *    - Önceden tanımlanmış popüler kategoriler
+ *    - Horizontal scroll ile kolay gezinme
+ *    - Kategori seçiminde otomatik arama
+ * 
+ * 4. SONUÇ YÖNETİMİ:
+ *    - Kategori + Restoran karışık sonuçlar
+ *    - Kategori seçiminde filtreleme
+ *    - Restoran seçiminde MenuSelection'a yönlendirme
+ * 
+ * Veri Akışı:
+ * - searchText: Anlık arama metni
+ * - searchResults: Filtrelenmiş sonuçlar listesi  
+ * - recentSearches: Kaydedilmiş geçmiş aramalar
+ * - restaurants: Firestore'dan gelen tüm restoranlar
+ */
+
 import React, { useState, useEffect, useMemo } from "react";
 import {
   View,

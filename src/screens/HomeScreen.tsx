@@ -1,4 +1,37 @@
-import React, { useEffect, useState } from "react";
+/*
+ * ANA SAYFA EKRANI (HomeScreen)
+ * 
+ * Bu ekran uygulamanın ana sayfasıdır ve şu temel işlevleri içerir:
+ * 
+ * 1. HAFTALIK PLANLAMA SİSTEMİ:
+ *    - 7 günlük yemek planı oluşturma
+ *    - Her gün için birden fazla öğün planı (kahvaltı, öğle, akşam vb.)
+ *    - Plan öğelerine restoran ve menü seçimi
+ *    - Zamanlamaya göre plan düzenleme
+ * 
+ * 2. GÜNLÜK SİPARİŞ SİSTEMİ:
+ *    - Hızlı tek seferlik sipariş verme
+ *    - Sepet yönetimi ve kontrol
+ *    - Anında sipariş işlemleri
+ * 
+ * 3. AI CHEF BOT:
+ *    - Yapay zeka destekli yemek önerisi
+ *    - Kullanıcı tercihlerine göre öneri
+ *    - Chat tabanlı etkileşim
+ * 
+ * 4. RESTORAN YÖNETİMİ:
+ *    - Restoranları listeleme ve filtreleme
+ *    - Restoran detayları ve menülerini görüntüleme
+ *    - Restoran bazlı sipariş işlemleri
+ * 
+ * Kritik State Yapıları:
+ * - weeklyPlan: DayPlan[] - 7 günlük plan verisi
+ * - restaurants: Restaurant[] - Firestore'dan gelen restoran listesi
+ * - cart: Record<string, CartItem[]> - Sepet verilerinin yönetimi
+ * - orderType: "weekly" | "daily" - Sipariş türü kontrolü
+ */
+
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -19,12 +52,14 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import { RootStackParamList } from "../navigation/AppNavigation";
 import { Svg, Path, Rect, G, Text as SvgText, Circle, Line, Polyline } from 'react-native-svg';
 import { useLanguage } from "../context/LanguageContext";
-import { getAllRestaurants, Restaurant } from '../services/RestaurantService';
+import { getAllRestaurants, Restaurant, getRestaurantMenu, getRestaurantById } from '../services/RestaurantService';
 import { useCart } from "./CartScreen";
 import { useLocation } from '../context/LocationContext';
+import { calculateDeliveryTime, calculateAveragePrice } from '../utils/deliveryUtils';
 import RestaurantSelectionView from '../components/RestaurantSelectionView';
 import TimePicker from '../components/TimePicker';
 import BottomTabBar from '../components/BottomTabBar';
+import AiChefBot from '../components/AiChefBot';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -64,10 +99,14 @@ interface PlanRestaurant extends Restaurant {
 
 interface Selection {
   id: string;
+  restaurantId: string;
   restaurantName: string;
   restaurantImage: string;
   itemName: string;
+  itemImage?: string;
   price: string;
+  quantity?: number;
+  itemId?: string;
 }
 
 interface Plan {
@@ -106,9 +145,16 @@ export default function HomeScreen() {
   const { t, language } = useLanguage();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
-  const { getItemsCount, addItem, removeItem } = useCart();
+  const { getItemsCount, addItem, removeItem, items } = useCart();
   const [cartItemsCount, setCartItemsCount] = useState(0);
-  const { selectedAddress, addresses, currentLocation } = useLocation();
+  const { selectedAddress, addresses, currentLocation, getCurrentLocation } = useLocation();
+
+  // Get current location when component mounts
+  useEffect(() => {
+    if (!currentLocation) {
+      getCurrentLocation();
+    }
+  }, []);
   const [weeklyPlan, setWeeklyPlan] = useState<DayPlan[]>([]);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [showRestaurantSelection, setShowRestaurantSelection] = useState(false);
@@ -123,6 +169,35 @@ export default function HomeScreen() {
   const [cart, setCart] = useState<Record<string, CartItem[]>>({});
   const [showCartActions, setShowCartActions] = useState(false);
   const [headerCart, setHeaderCart] = useState<CartItem[]>([]);
+  const [showAiChatbot, setShowAiChatbot] = useState(false);
+  const [showRestaurantDetail, setShowRestaurantDetail] = useState<{
+    restaurant: any;
+    activeTab: 'menu' | 'reviews' | 'info';
+  } | null>(null);
+  
+  // Track item quantities for UI display
+  const [itemQuantities, setItemQuantities] = useState<{[key: string]: number}>({});
+  
+  // Get current quantity for an item in the current plan
+  const getCurrentItemQuantity = (itemId: string): number => {
+    if (orderType === "weekly" && selectedPlanInfo) {
+      const { dayIndex, planId } = selectedPlanInfo;
+      const day = weeklyPlan[dayIndex];
+      if (!day?.plans) return 0;
+      
+      const plan = day.plans.find(p => p.id === planId);
+      if (!plan?.selections) return 0;
+      
+      const selection = plan.selections.find(s => s.itemId === itemId);
+      return selection?.quantity || 0;
+    } else if (orderType === "daily") {
+      // For daily mode, count items in the global cart
+      const cartItems = items.filter(item => item.id.includes(itemId) || item.name === itemId);
+      return cartItems.reduce((total, item) => total + item.quantity, 0);
+    }
+    
+    return 0;
+  };
 
   // Safely access cart items count
   useEffect(() => {
@@ -152,15 +227,18 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // Firestore'dan restoranları çekme işlevi
   // Fetch restaurants from Firestore
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
         setLoading(true);
+        console.log("HomeScreen: Fetching restaurants from Firestore...");
         const restaurantsData = await getAllRestaurants();
+        console.log(`HomeScreen: Fetched ${restaurantsData.length} restaurants`);
         setRestaurants(restaurantsData);
       } catch (error) {
-        console.error('Error fetching restaurants:', error);
+        console.error('HomeScreen: Error fetching restaurants:', error);
       } finally {
         setLoading(false);
       }
@@ -169,52 +247,68 @@ export default function HomeScreen() {
     fetchRestaurants();
   }, []);
 
-  // Initialize weekly plan
+  // AsyncStorage'dan haftalık planı yükleme işlevi
+  // Load weekly plan from AsyncStorage
   useEffect(() => {
-    // Try to load saved weekly plan first
     const loadWeeklyPlan = async () => {
       try {
-        const savedPlan = await AsyncStorage.getItem('weeklyPlan');
+        console.log("HomeScreen: Loading weekly plan from AsyncStorage...");
+        const savedPlan = await AsyncStorage.getItem('@weekly_plan');
         if (savedPlan) {
           const parsedPlan = JSON.parse(savedPlan);
-          console.log('Loaded weekly plan from AsyncStorage');
+          console.log("HomeScreen: Loaded weekly plan:", parsedPlan);
           setWeeklyPlan(parsedPlan);
         } else {
-          // If no saved plan, generate a new one
-          setWeeklyPlan(generateWeeklyPlan());
+          console.log("HomeScreen: No saved plan found, generating new one");
+          const newPlan = generateWeeklyPlan();
+          setWeeklyPlan(newPlan);
+          await AsyncStorage.setItem('@weekly_plan', JSON.stringify(newPlan));
         }
       } catch (error) {
-        console.error('Error loading weekly plan:', error);
-        // Fallback to generating a new plan
-        setWeeklyPlan(generateWeeklyPlan());
+        console.error('HomeScreen: Error loading weekly plan:', error);
+        // Fallback to generate a new plan
+        const newPlan = generateWeeklyPlan();
+        setWeeklyPlan(newPlan);
       }
     };
-    
+
     loadWeeklyPlan();
   }, []);
 
-  // Generate a weekly plan starting from today
+  // 7 günlük yemek planı oluşturma fonksiyonu
+  // Bu fonksiyon başlangıçta boş bir haftalık plan şablonu oluşturur
   function generateWeeklyPlan(): DayPlan[] {
-    const daysOfWeek = ['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'];
+    const daysOfWeek = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
     const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 is Sunday, 1 is Monday, etc.
+    
+    console.log('Generating weekly plan for:', daysOfWeek[today.getDay()], today.toLocaleDateString('tr-TR'));
     
     const weekPlan: DayPlan[] = [];
     
     for (let i = 0; i < 7; i++) {
       const planDate = new Date(today);
       planDate.setDate(today.getDate() + i);
-      const dayNumber = planDate.getDay();
+      const dayNumber = planDate.getDay(); // 0=Pazar, 1=Pazartesi, 2=Salı vb.
       
       // Get current time for the default time value
       const currentHour = today.getHours();
       const currentMinute = Math.ceil(today.getMinutes() / 5) * 5; // Round to nearest 5 minutes
       const defaultTime = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
       
+      // Format date properly - show day and date
+      const formattedDate = planDate.toLocaleDateString('tr-TR', { 
+        day: 'numeric', 
+        month: 'long' 
+      });
+      
+      // Day name logic - bugün hangi günse ondan başlasın
+      const dayName = daysOfWeek[dayNumber];
+      const displayName = dayName; // Basit gün adı, ek işaret yok
+      
       weekPlan.push({
         id: i + 1,
-        name: daysOfWeek[dayNumber],
-        date: planDate.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long' }),
+        name: displayName,
+        date: formattedDate,
         completed: false,
         plans: [
           {
@@ -226,6 +320,8 @@ export default function HomeScreen() {
         ]
       });
     }
+    
+    console.log('Generated plan days:', weekPlan.map(d => d.name));
     
     return weekPlan;
   }
@@ -365,20 +461,253 @@ export default function HomeScreen() {
     setSelectedPlanInfo(null);
   };
 
+  // AI Chatbot için sepete ekleme fonksiyonu
+  const handleAiAddToCart = (restaurantId: string, restaurantName: string, itemId: string, itemName: string, quantity: number = 1) => {
+    try {
+      // Global sepete ekle
+      for (let i = 0; i < quantity; i++) {
+        addItem({
+          id: `ai-${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${i}`,
+          name: itemName,
+          price: 0, // AI chatbot fiyat bilgisi vermediği için 0
+          restaurantId,
+          restaurantName
+        });
+      }
+      
+      Alert.alert(
+        "Başarılı",
+        `${itemName} sepetinize eklendi!`,
+        [{ text: "Tamam", onPress: () => {} }]
+      );
+    } catch (error) {
+      console.error('AI Chatbot sepete ekleme hatası:', error);
+      Alert.alert(
+        "Hata",
+        "Ürün sepete eklenirken bir sorun oluştu.",
+        [{ text: "Tamam", onPress: () => {} }]
+      );
+    }
+  };
+
+  // Doğrudan haftalık plana ürün ekleyen fonksiyon
+  const addDirectlyToPlan = async (restaurantId: string, itemId: string): Promise<boolean> => {
+    console.log('[HomeScreen][addDirectlyToPlan] BAŞLADI - restaurantId:', restaurantId, 'itemId:', itemId);
+    
+    if (!selectedPlanInfo) {
+      console.error('[HomeScreen][addDirectlyToPlan] selectedPlanInfo NULL. İşlem iptal ediliyor.');
+      return false;
+    }
+    
+    const { dayIndex, planId } = selectedPlanInfo;
+    console.log(`[HomeScreen][addDirectlyToPlan] dayIndex: ${dayIndex}, planId: ${planId}`);
+    
+    // Restoranı bul
+    const restaurant = restaurants.find(r => r.id === restaurantId) as any;
+    if (!restaurant) {
+      console.error('[HomeScreen][addDirectlyToPlan] Restoran bulunamadı:', restaurantId);
+      return false;
+    }
+    
+    // Önce menü verilerini Firebase'den çekmeyi dene
+    let item: any = null;
+    
+    try {
+      const menuItems = await getRestaurantMenu(restaurantId);
+      if (menuItems && menuItems.length > 0) {
+        item = menuItems.find((i: any) => i.id === itemId);
+        console.log('[HomeScreen][addDirectlyToPlan] Menü Firebase subcollection\'dan bulundu:', item);
+      }
+    } catch (error) {
+      console.log('[HomeScreen][addDirectlyToPlan] Firebase subcollection hatası:', error);
+    }
+    
+    // Eğer Firebase'den bulunamadıysa, restaurant objesinden ara
+    if (!item) {
+      console.log('[HomeScreen][addDirectlyToPlan] Restaurant state\'den aranıyor...');
+      if (Array.isArray(restaurant.menu)) {
+        item = restaurant.menu.find((i: any) => i.id === itemId);
+        console.log('[HomeScreen][addDirectlyToPlan] restaurant.menu\'dan bulundu:', item);
+      } else if (Array.isArray(restaurant.menuItems)) {
+        item = restaurant.menuItems.find((i: any) => i.id === itemId);
+        console.log('[HomeScreen][addDirectlyToPlan] restaurant.menuItems\'dan bulundu:', item);
+      } else if (Array.isArray(restaurant.items)) {
+        item = restaurant.items.find((i: any) => i.id === itemId);
+        console.log('[HomeScreen][addDirectlyToPlan] restaurant.items\'dan bulundu:', item);
+      }
+    }
+    
+    if (!item) {
+      console.error('[HomeScreen][addDirectlyToPlan] Ürün hiçbir yerde bulunamadı:', itemId);
+      return false;
+    }
+    
+    // Fiyatı hesapla
+    let itemPrice = 0;
+    if (typeof item.fiyat === 'number') {
+      itemPrice = item.fiyat;
+    } else if (typeof item.fiyat === 'string') {
+      itemPrice = parseFloat(String(item.fiyat).replace('₺', '').replace(',', '.'));
+    } else if (typeof item.price === 'number') {
+      itemPrice = item.price;
+    } else if (typeof item.price === 'string') {
+      itemPrice = parseFloat(String(item.price).replace('₺', '').replace(',', '.'));
+    }
+    if (isNaN(itemPrice)) itemPrice = 0;
+    
+    // Ürün ve restoran adını al
+    const itemName = item.isim || item.name || 'Ürün';
+    const restaurantName = restaurant.isim || restaurant.name || 'Restoran';
+    
+    try {
+      // Yeni selection oluştur
+      const newSelection = {
+        id: `direct-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        restaurantId: restaurantId,
+        restaurantName,
+        restaurantImage: restaurant.logoUrl || restaurant.image || 'https://via.placeholder.com/100',
+        itemName,
+        itemImage: restaurant.logoUrl || restaurant.image || 'https://via.placeholder.com/80', // Ürün resmi yerine restoran logosu kullanılıyor
+        price: `₺${itemPrice.toFixed(2)}`,
+        quantity: 1
+      };
+      
+      console.log(`[HomeScreen][addDirectlyToPlan] Yeni selection oluşturuldu:`, newSelection);
+      
+      // AsyncStorage'dan en güncel planı al ve güncelle
+      const savedPlanStr = await AsyncStorage.getItem('weeklyPlan');
+      let currentWeeklyPlan = savedPlanStr ? JSON.parse(savedPlanStr) : JSON.parse(JSON.stringify(weeklyPlan));
+      
+      // Günü ve planı bul
+      if (!currentWeeklyPlan[dayIndex]) {
+        console.error(`[HomeScreen][addDirectlyToPlan] Gün bulunamadı, index: ${dayIndex}`);
+        return false;
+      }
+      
+      if (!currentWeeklyPlan[dayIndex].plans) {
+        currentWeeklyPlan[dayIndex].plans = [];
+      }
+      
+      // Planı bul veya oluştur
+      let planIndex = currentWeeklyPlan[dayIndex].plans.findIndex(p => p.id === planId);
+      if (planIndex === -1) {
+        // Plan yoksa ekle
+        currentWeeklyPlan[dayIndex].plans.push({
+          id: planId,
+          name: `Plan ${currentWeeklyPlan[dayIndex].plans.length + 1}`,
+          time: '12:00',
+          selections: []
+        });
+        planIndex = currentWeeklyPlan[dayIndex].plans.length - 1;
+      }
+      
+      const plan = currentWeeklyPlan[dayIndex].plans[planIndex];
+      
+      // Selections dizisinin varlığını kontrol et
+      if (!plan.selections) {
+        plan.selections = [];
+      }
+      
+      // Aynı item için existing selection'ı ara
+      const existingSelectionIndex = plan.selections.findIndex(s => 
+        s.restaurantId === restaurantId && s.itemName === itemName
+      );
+      
+      if (existingSelectionIndex !== -1) {
+        // Mevcut selection'ın quantity'sini artır
+        const existingSelection = plan.selections[existingSelectionIndex];
+        existingSelection.quantity = (existingSelection.quantity || 1) + 1;
+        console.log(`[HomeScreen][addDirectlyToPlan] Existing selection quantity artırıldı: ${existingSelection.quantity}`);
+      } else {
+        // Yeni selection ekle
+        plan.selections.push({
+          ...newSelection,
+          itemId: itemId // itemId'yi de ekliyoruz tracking için
+        });
+        console.log(`[HomeScreen][addDirectlyToPlan] Yeni selection eklendi, plan artık ${plan.selections.length} seçim içeriyor`);
+      }
+      
+      // AsyncStorage'a kaydet
+      await AsyncStorage.setItem('weeklyPlan', JSON.stringify(currentWeeklyPlan));
+      console.log('[HomeScreen][addDirectlyToPlan] Plan AsyncStorage\'a kaydedildi');
+      
+      // State'i güncelle
+      setWeeklyPlan(currentWeeklyPlan);
+      console.log('[HomeScreen][addDirectlyToPlan] State güncellendi');
+      
+      // Global sepete de ekle
+      try {
+        addItem({
+          id: newSelection.id,
+          name: newSelection.itemName,
+          price: itemPrice,
+          restaurantId: restaurantId,
+          restaurantName: newSelection.restaurantName,
+          planInfo: { dayIndex, planId }
+        });
+        console.log('[HomeScreen][addDirectlyToPlan] Global sepete eklendi');
+      } catch (error) {
+        console.error('[HomeScreen][addDirectlyToPlan] Global sepete eklenirken hata:', error);
+      }
+      
+      // UI'ı zorla yenile
+      setTimeout(() => {
+        setWeeklyPlan(prevPlan => [...JSON.parse(JSON.stringify(currentWeeklyPlan))]);
+      }, 100);
+      // Alert kaldırıldı - doğrudan quantity artırma olarak değiştirildi
+      
+      return true;
+    } catch (error) {
+      console.error('[HomeScreen][addDirectlyToPlan] Kritik hata:', error);
+      return false;
+    }
+  };
+
+  // Remove item from cart
+  const removeItemFromCart = async (restaurantId: string, itemId: string): Promise<boolean> => {
+    console.log('[HomeScreen][removeItemFromCart] TRIGGERED. restaurantId:', restaurantId, 'itemId:', itemId);
+    
+    if (orderType === "weekly" && selectedPlanInfo) {
+      // For weekly plan mode, find and decrease the selection quantity
+      const { dayIndex, planId } = selectedPlanInfo;
+      const day = weeklyPlan[dayIndex];
+      if (!day?.plans) return false;
+      
+      const plan = day.plans.find(p => p.id === planId);
+      if (!plan?.selections) return false;
+      
+      const selection = plan.selections.find(s => s.itemId === itemId);
+      if (selection) {
+        await updateSelectionQuantity(planId, selection.id, -1);
+        return true;
+      }
+      return false;
+    } else {
+      // For daily mode, remove from regular cart
+      try {
+        removeItem(itemId);
+        return true;
+      } catch (error) {
+        console.error('[HomeScreen][removeItemFromCart] Error removing from cart:', error);
+        return false;
+      }
+    }
+  };
+
   // Add item to cart
-  const addItemToCart = (restaurantId: string, itemId: string) => {
+  const addItemToCart = async (restaurantId: string, itemId: string): Promise<boolean> => {
     console.log('[HomeScreen][addItemToCart] TRIGGERED. restaurantId:', restaurantId, 'itemId:', itemId);
     console.log('[HomeScreen][addItemToCart] current selectedPlanInfo:', selectedPlanInfo);
     if (!selectedPlanInfo) {
       console.error('[HomeScreen][addItemToCart] selectedPlanInfo is NULL. Aborting.');
-      return;
+      return false;
     }
     
     const { dayIndex, planId } = selectedPlanInfo;
     const restaurant = restaurants.find(r => r.id === restaurantId) as any;
     if (!restaurant) {
       console.error('[HomeScreen][addItemToCart] Restaurant not found for ID:', restaurantId);
-      return;
+      return false;
     }
     
     let item: MenuItem | undefined;
@@ -390,7 +719,7 @@ export default function HomeScreen() {
     
     if (!item) {
       console.error('[HomeScreen][addItemToCart] Item not found for ID:', itemId, 'in restaurant', restaurantId);
-      return;
+      return false;
     }
     
     const itemPrice = typeof item.fiyat === 'number' ? 
@@ -438,6 +767,8 @@ export default function HomeScreen() {
       [{ text: 'OK', onPress: () => {} }],
       { cancelable: true }
     );
+    
+    return true;
   };
 
   // Get current cart item count
@@ -465,180 +796,322 @@ export default function HomeScreen() {
   };
 
   // Complete meal selection
-  const completeMealSelection = () => {
-    if (getCurrentCartItemCount() > 0) {
-      addCartToSelection();
-    }
+  const completeMealSelection = async () => {
+    console.log('[HomeScreen][completeMealSelection] STARTED');
     
+    try {
+      const itemCount = getCurrentCartItemCount();
+      console.log(`[HomeScreen][completeMealSelection] Current cart has ${itemCount} items`);
+      
+      let success = true;
+      if (itemCount > 0) {
+        console.log(`[HomeScreen][completeMealSelection] Adding ${itemCount} items to plan`);
+        success = await addCartToSelection();
+        
+        if (success) {
+          console.log('[HomeScreen][completeMealSelection] Items successfully added to plan');
+        } else {
+          console.error('[HomeScreen][completeMealSelection] Failed to add items to plan');
+        }
+      } else {
+        console.log('[HomeScreen][completeMealSelection] No items to add');
+      }
+      
+      // Close restaurant selection
     setShowRestaurantSelection(false);
     setSelectedPlanInfo(null);
+      
     // Ensure we stay in weekly mode after completing meal selection
     setOrderType("weekly");
+      
+      if (success && itemCount > 0) {
+        Alert.alert(
+          "Başarılı",
+          `${itemCount} yemek haftalık planınıza eklenmiştir.`,
+          [{ text: "Tamam", onPress: () => {} }]
+        );
+      }
+      
+    } catch (error) {
+      console.error('[HomeScreen][completeMealSelection] Error:', error);
+      
+      setShowRestaurantSelection(false);
+      setSelectedPlanInfo(null);
+      
+      Alert.alert(
+        "Hata",
+        "İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+        [{ text: "Tamam", onPress: () => {} }]
+      );
+    }
   };
 
-  // Add cart to selection
-  const addCartToSelection = () => {
-    console.log('[HomeScreen][addCartToSelection] TRIGGERED.');
-    console.log('[HomeScreen][addCartToSelection] current selectedPlanInfo:', selectedPlanInfo);
+  // Add cart to selection - Fixed and improved
+  const addCartToSelection = async (): Promise<boolean> => {
+    console.log('[HomeScreen][addCartToSelection] STARTED');
+    
     if (!selectedPlanInfo) {
-      console.error('[HomeScreen][addCartToSelection] selectedPlanInfo is NULL. Aborting.');
-      return;
+      console.error('[HomeScreen][addCartToSelection] selectedPlanInfo is NULL');
+      return false;
     }
   
     const { dayIndex, planId } = selectedPlanInfo;
     const cartKey = `${dayIndex}-${planId}`;
-    const localPlanCartItems = cart[cartKey] || []; // HomeScreen'de cart state CartItem[] tutuyor
-    console.log(`[HomeScreen][addCartToSelection] Items from local cart for key ${cartKey}:`, JSON.stringify(localPlanCartItems, null, 2));
+    const localPlanCartItems = cart[cartKey] || [];
+    
+    console.log(`[HomeScreen][addCartToSelection] Processing items for day ${dayIndex}, plan ${planId}`);
+    console.log(`[HomeScreen][addCartToSelection] cart[${cartKey}]: ${localPlanCartItems.length} items`);
 
     if (localPlanCartItems.length === 0) {
-      console.log('[HomeScreen][addCartToSelection] No items in local cart to add. Aborting.');
-      return;
+      console.log('[HomeScreen][addCartToSelection] No items to add');
+      return true; // Not an error, just nothing to add
     }
-  
-    setWeeklyPlan(prevWeeklyPlan => {
-      console.log('[HomeScreen][addCartToSelection] setWeeklyPlan CALLED. prevWeeklyPlan (day of interest):\nDayIndex: ', dayIndex, 'PlanID: ', planId, 'Plan details:', JSON.stringify(prevWeeklyPlan[dayIndex]?.plans.find(p => p.id === planId), null, 2));
-      const newWeeklyPlan = prevWeeklyPlan.map((day, dIndex) => {
-        if (dIndex === dayIndex) {
-          const newPlans = day.plans.map(p => {
-            if (p.id === planId) {
-              console.log(`[HomeScreen][addCartToSelection] Updating plan: ${p.id} for day ${dIndex}`);
-              const newSelections: Selection[] = [...p.selections]; // HomeScreen'deki Selection price: string
-              
-              localPlanCartItems.forEach(localItem => {
-                console.log('[HomeScreen][addCartToSelection] Processing localItem for plan selection:', localItem);
-                newSelections.push({
-                  id: localItem.id,
-                  restaurantName: localItem.restaurantName,
-                  restaurantImage: localItem.restaurantImage,
-                  itemName: localItem.itemName,
-                  price: localItem.price // localItem.price zaten string (₺X.XX formatında)
-                });
-
-                // Global sepete ekleme (CartContext'teki addItem number price bekler)
-                const priceString = localItem.price.replace('₺', '').replace(',', '.');
-                const priceNumber = parseFloat(priceString);
-
-                console.log('[HomeScreen][addCartToSelection] Attempting to call global addItem for:', localItem.itemName, 'with planInfo:', { dayIndex, planId }, 'parsed price:', priceNumber);
-                if (!isNaN(priceNumber)) {
-                  try {
-                    addItem({
-                      id: localItem.id,
-                      name: localItem.itemName,
-                      price: priceNumber, // Number olarak gönder
-                      restaurantId: localItem.restaurantId,
-                      restaurantName: localItem.restaurantName,
-                      planInfo: { dayIndex, planId }
-                    });
-                    console.log(`[HomeScreen][addCartToSelection] Global addItem SUCCEEDED for: ${localItem.itemName}`);
-                  } catch (error) {
-                    console.error(`[HomeScreen][addCartToSelection] Global addItem FAILED for: ${localItem.itemName}`, error);
-                  }
-                } else {
-                  console.error(`[HomeScreen][addCartToSelection] Global addItem SKIPPED for: ${localItem.itemName} due to invalid price string:`, localItem.price);
-                }
-              });
-              console.log(`[HomeScreen][addCartToSelection] Plan ${p.id} newSelections:`, JSON.stringify(newSelections, null, 2));
-              return { ...p, selections: newSelections };
-            }
-            return p;
-          });
-          return { ...day, plans: newPlans };
+    
+    try {
+      // Create deep copy of current weekly plan for safe updates
+      const updatedWeeklyPlan = JSON.parse(JSON.stringify(weeklyPlan));
+      
+      // Find the day and plan
+      const day = updatedWeeklyPlan[dayIndex];
+      if (!day?.plans) {
+        console.error(`[HomeScreen][addCartToSelection] Invalid day at index ${dayIndex}`);
+        return false;
+      }
+      
+      const planIndex = day.plans.findIndex(p => p.id === planId);
+      if (planIndex === -1) {
+        console.error(`[HomeScreen][addCartToSelection] Plan ${planId} not found`);
+        return false;
+      }
+      
+      const targetPlan = day.plans[planIndex];
+      
+      // Ensure selections is initialized as an array
+      if (!targetPlan.selections || !Array.isArray(targetPlan.selections)) {
+        console.log('[HomeScreen][addCartToSelection] Initializing selections array');
+        targetPlan.selections = [];
+      }
+      
+      // Convert cart items to selections
+      localPlanCartItems.forEach((localItem, index) => {
+        // Extract price from string format (₺X.XX)
+        const priceString = localItem.price.replace('₺', '').replace(',', '.');
+        const priceNumber = parseFloat(priceString);
+        
+        if (isNaN(priceNumber)) {
+          console.error(`[HomeScreen][addCartToSelection] Invalid price format: ${localItem.price}`);
+          return; // Skip this item
         }
-        return day;
+        
+        // Add to plan selections
+        targetPlan.selections.push({
+          id: localItem.id,
+          restaurantName: localItem.restaurantName,
+          restaurantImage: localItem.restaurantImage,
+          itemName: localItem.itemName,
+          price: localItem.price
+        });
+
+        // Add to global cart
+          try {
+            addItem({
+              id: localItem.id,
+              name: localItem.itemName,
+            price: priceNumber,
+              restaurantId: localItem.restaurantId,
+              restaurantName: localItem.restaurantName,
+              planInfo: { dayIndex, planId }
+            });
+          } catch (error) {
+          console.error('[HomeScreen][addCartToSelection] Error adding to global cart:', error);
+          }
       });
       
-      console.log('[HomeScreen][addCartToSelection] About to save to AsyncStorage and sync with global cart.');
-      try {
-        AsyncStorage.setItem('weeklyPlan', JSON.stringify(newWeeklyPlan));
-        console.log('[HomeScreen][addCartToSelection] weeklyPlan SAVED to AsyncStorage.');
-        
-        try {
-          const { syncWithWeeklyPlan } = useCart(); 
-          if (syncWithWeeklyPlan) {
-            syncWithWeeklyPlan(newWeeklyPlan);
-            console.log('[HomeScreen][addCartToSelection] Weekly plan synced with global cart');
-          }
-        } catch (error) {
-          console.error('[HomeScreen][addCartToSelection] Error syncing with global cart:', error);
-        }
-      } catch (error) {
-        console.error('[HomeScreen][addCartToSelection] Error saving weekly plan:', error);
-      }
-      return newWeeklyPlan;
-    });
-    
+      console.log(`[HomeScreen][addCartToSelection] Added ${localPlanCartItems.length} selections. Plan now has ${targetPlan.selections.length} total selections`);
+      
+      // Update state immediately - this is crucial!
+      setWeeklyPlan(updatedWeeklyPlan);
+      console.log('[HomeScreen][addCartToSelection] Updated state immediately');
+      
+      // Save to AsyncStorage
+      await AsyncStorage.setItem('weeklyPlan', JSON.stringify(updatedWeeklyPlan));
+      console.log('[HomeScreen][addCartToSelection] Saved to AsyncStorage');
+      
+      // Clear local cart for this plan
     setCart(prevCart => {
       const updatedCart = { ...prevCart };
       delete updatedCart[cartKey];
-      console.log('[HomeScreen][addCartToSelection] Local cart for key', cartKey, 'CLEARED.');
       return updatedCart;
     });
+      
     setHeaderCart([]);
     setShowCartActions(false);
-    console.log('[HomeScreen][addCartToSelection] FINISHED. Header cart cleared, actions hidden.');
+      
+      // Force a re-render by creating a completely new reference
+      setTimeout(() => {
+        setWeeklyPlan(prevPlan => [...JSON.parse(JSON.stringify(updatedWeeklyPlan))]);
+      }, 100);
+      
+      console.log('[HomeScreen][addCartToSelection] SUCCESS');
+    
+      // Show success message
+    Alert.alert(
+      "Başarılı",
+      "Seçtiğiniz yemekler haftalık planınıza eklendi!",
+      [{ text: "Tamam", onPress: () => {} }]
+    );
+      
+      return true;
+      
+    } catch (error) {
+      console.error('[HomeScreen][addCartToSelection] ERROR:', error);
+      return false;
+    }
   };
 
-  // Remove a selection from a plan
-  const removeSelection = (planId: string, selectionId: string) => {
-    // Use immutable update pattern
-    setWeeklyPlan(prevWeeklyPlan => {
-      const newWeeklyPlan = prevWeeklyPlan.map((day, dIndex) => {
-        if (dIndex === activeDayIndex) {
-          // Create a new copy of the day's plans
-          const newPlans = day.plans.map(p => {
-            if (p.id === planId) {
-              // Find the selection to be removed
-              const selectionToRemove = p.selections.find(
-                selection => selection.id === selectionId
-              );
-              
-              // Create a new copy of selections without the removed item
-              const newSelections = p.selections.filter(
-                selection => selection.id !== selectionId
-              );
-              
-              // Also try to remove from global cart if it exists there
-              if (selectionToRemove) {
-                try {
-                  removeItem(selectionId);
-                  console.log(`Removed item ${selectionId} from global cart`);
-                } catch (error) {
-                  console.error('Error removing from global cart:', error);
-                }
-              }
-              
-              return { ...p, selections: newSelections };
-            }
-            return p;
-          });
-          
-          return { ...day, plans: newPlans };
-        }
-        return day;
-      });
+  // Update selection quantity
+  const updateSelectionQuantity = async (planId: string, selectionId: string, change: number) => {
+    console.log(`[HomeScreen][updateSelectionQuantity] Updating quantity for selection ${selectionId} in plan ${planId}, change: ${change}`);
+    
+    try {
+      // Create a deep copy of current weekly plan
+      const updatedWeeklyPlan = JSON.parse(JSON.stringify(weeklyPlan));
       
-      // Save the updated weekly plan to AsyncStorage
-      try {
-        AsyncStorage.setItem('weeklyPlan', JSON.stringify(newWeeklyPlan));
-        console.log('Weekly plan saved to AsyncStorage after item removal');
-        
-        // Sync with global cart (if available)
-        try {
-          // Get syncWithWeeklyPlan function from CartContext
-          const { syncWithWeeklyPlan } = useCart();
-          if (syncWithWeeklyPlan) {
-            syncWithWeeklyPlan(newWeeklyPlan);
-            console.log('Weekly plan synced with global cart after item removal');
-          }
-        } catch (error) {
-          console.error('Error syncing with global cart:', error);
-        }
-      } catch (error) {
-        console.error('Error saving weekly plan:', error);
+      // Find the day and plan
+      const day = updatedWeeklyPlan[activeDayIndex];
+      if (!day?.plans) {
+        console.error(`[HomeScreen][updateSelectionQuantity] Invalid day at index ${activeDayIndex}`);
+        return;
       }
       
-      return newWeeklyPlan;
-    });
+      const planIndex = day.plans.findIndex(p => p.id === planId);
+      if (planIndex === -1) {
+        console.error(`[HomeScreen][updateSelectionQuantity] Plan ${planId} not found`);
+        return;
+      }
+      
+      const targetPlan = day.plans[planIndex];
+      const selectionIndex = targetPlan.selections?.findIndex(s => s.id === selectionId) ?? -1;
+      
+      if (selectionIndex === -1) {
+        console.error(`[HomeScreen][updateSelectionQuantity] Selection ${selectionId} not found`);
+        return;
+      }
+      
+      const selection = targetPlan.selections[selectionIndex];
+      const currentQuantity = selection.quantity || 1;
+      const newQuantity = Math.max(0, currentQuantity + change);
+      
+      if (newQuantity === 0) {
+        // Remove the selection if quantity becomes 0
+        await removeSelection(planId, selectionId);
+        return;
+      }
+      
+      // Update quantity
+      selection.quantity = newQuantity;
+              
+      // Global sepette de quantity güncelle
+      try {
+        if (change > 0) {
+          // Artırma durumunda item'ı sepete ekle
+          addItem({
+            id: selectionId,
+            name: selection.itemName,
+            price: parseFloat(selection.price.replace('₺', '').replace(',', '.')),
+            restaurantId: selection.restaurantId,
+            restaurantName: selection.restaurantName,
+            planInfo: { dayIndex: activeDayIndex, planId }
+          });
+        } else if (change < 0) {
+          // Azaltma durumunda item'ı sepetten çıkar
+                  removeItem(selectionId);
+        }
+                } catch (error) {
+        console.error('[HomeScreen][updateSelectionQuantity] Error updating global cart:', error);
+                }
+      
+      // Save to AsyncStorage
+      await AsyncStorage.setItem('weeklyPlan', JSON.stringify(updatedWeeklyPlan));
+      console.log('[HomeScreen][updateSelectionQuantity] Saved to AsyncStorage');
+      
+      // Update state
+      setWeeklyPlan(updatedWeeklyPlan);
+      console.log('[HomeScreen][updateSelectionQuantity] Updated state');
+      
+      // Force UI refresh
+      setTimeout(() => {
+        setWeeklyPlan(prevPlan => [...JSON.parse(JSON.stringify(updatedWeeklyPlan))]);
+      }, 100);
+      
+                } catch (error) {
+      console.error('[HomeScreen][updateSelectionQuantity] Error:', error);
+                }
+  };
+      
+  // Remove a selection from a plan
+  const removeSelection = async (planId: string, selectionId: string) => {
+    console.log(`[HomeScreen][removeSelection] Removing selection ${selectionId} from plan ${planId}`);
+    
+    try {
+      // Create a deep copy of current weekly plan
+      const updatedWeeklyPlan = JSON.parse(JSON.stringify(weeklyPlan));
+      
+      // Find the day and plan
+      const day = updatedWeeklyPlan[activeDayIndex];
+      if (!day?.plans) {
+        console.error(`[HomeScreen][removeSelection] Invalid day at index ${activeDayIndex}`);
+        return;
+      }
+      
+      const planIndex = day.plans.findIndex(p => p.id === planId);
+      if (planIndex === -1) {
+        console.error(`[HomeScreen][removeSelection] Plan ${planId} not found`);
+        return;
+      }
+      
+      const targetPlan = day.plans[planIndex];
+      const initialCount = targetPlan.selections?.length || 0;
+      
+      // Remove the selection
+      targetPlan.selections = targetPlan.selections?.filter(
+        selection => selection.id !== selectionId
+      ) || [];
+      
+      if (targetPlan.selections.length === initialCount) {
+        console.warn(`[HomeScreen][removeSelection] Selection ${selectionId} not found`);
+        return;
+      }
+      
+      console.log(`[HomeScreen][removeSelection] Plan now has ${targetPlan.selections.length} selections`);
+      
+      // Save to AsyncStorage first
+      await AsyncStorage.setItem('weeklyPlan', JSON.stringify(updatedWeeklyPlan));
+      console.log('[HomeScreen][removeSelection] Saved to AsyncStorage');
+      
+      // Update state
+      setWeeklyPlan(updatedWeeklyPlan);
+      console.log('[HomeScreen][removeSelection] Updated state');
+      
+      // Remove from global cart
+      try {
+        removeItem(selectionId);
+        console.log(`[HomeScreen][removeSelection] Removed from global cart`);
+        } catch (error) {
+        console.error('[HomeScreen][removeSelection] Error removing from global cart:', error);
+        }
+      
+      // Force UI refresh
+      setTimeout(() => {
+        setWeeklyPlan(prevPlan => [...JSON.parse(JSON.stringify(updatedWeeklyPlan))]);
+      }, 100);
+      
+      // UI feedback
+      // Alert.alert("Bilgi", "Ürün planınızdan kaldırıldı");
+      
+      } catch (error) {
+      console.error('[HomeScreen][removeSelection] Error:', error);
+      }
   };
 
   // Calculate total cost of plan
@@ -656,10 +1129,114 @@ export default function HomeScreen() {
     return total;
   };
 
-  // View restaurant details for WeeklyPlan
-  const viewRestaurantDetails = (restaurantId: string) => {
-    if (restaurantId) {
-      navigation.navigate('MenuSelection', { restaurantId, orderType: 'weekly' });
+  // View restaurant details - enhanced to handle both daily and weekly modes
+  const viewRestaurantDetails = async (restaurantId: string) => {
+    console.log('Viewing restaurant details for:', restaurantId, 'Mode:', orderType);
+    const restaurant = restaurants.find(r => r.id === restaurantId);
+    if (restaurant) {
+      try {
+        // Always try to fetch menu from subcollection first
+        let menuItems = await getRestaurantMenu(restaurantId);
+        console.log('Menu items from subcollection:', menuItems);
+        
+        // If subcollection is empty, try to get from restaurant document
+        if (!menuItems || menuItems.length === 0) {
+          console.log('Trying to get menu from restaurant document...');
+          const restaurantDoc = await getRestaurantById(restaurantId);
+          
+          if (restaurantDoc) {
+            // Check different possible menu fields
+            if (restaurantDoc.menu && Array.isArray(restaurantDoc.menu)) {
+              menuItems = restaurantDoc.menu;
+              console.log('Menu items from restaurant.menu:', menuItems);
+            } else if ((restaurantDoc as any).menuItems && Array.isArray((restaurantDoc as any).menuItems)) {
+              menuItems = (restaurantDoc as any).menuItems;
+              console.log('Menu items from restaurant.menuItems:', menuItems);
+            } else if ((restaurantDoc as any).items && Array.isArray((restaurantDoc as any).items)) {
+              menuItems = (restaurantDoc as any).items;
+              console.log('Menu items from restaurant.items:', menuItems);
+            }
+          }
+        }
+        
+        // Fallback to existing restaurant data
+        if (!menuItems || menuItems.length === 0) {
+          console.log('Using fallback menu data from restaurants state...');
+          menuItems = (restaurant as any).items || (restaurant as any).menuItems || (restaurant as any).menu || [];
+        }
+        
+        console.log('Final menu items:', menuItems);
+        
+        // Restoran verilerine menü ürünlerini ekleyelim
+        const restaurantWithMenu = {
+          ...restaurant,
+          items: menuItems
+        } as PlanRestaurant;
+        
+        setShowRestaurantDetail({
+          restaurant: restaurantWithMenu,
+          activeTab: 'menu'
+        });
+      } catch (error) {
+        console.error('Error fetching restaurant menu:', error);
+        // Hata durumunda mevcut restaurant verilerini kullan
+        setShowRestaurantDetail({
+          restaurant: {
+            ...restaurant,
+            items: (restaurant as any).items || (restaurant as any).menuItems || (restaurant as any).menu || []
+          } as PlanRestaurant,
+          activeTab: 'menu'
+        });
+      }
+    }
+  };
+
+  // Handle restaurant detail tab change
+  const handleRestaurantTabChange = (tab: 'menu' | 'reviews' | 'info') => {
+    if (showRestaurantDetail) {
+      setShowRestaurantDetail({
+        ...showRestaurantDetail,
+        activeTab: tab
+      });
+    }
+  };
+
+  // Handle back to restaurant list
+  const handleBackToRestaurantList = () => {
+    setShowRestaurantDetail(null);
+  };
+
+  // Go to cart
+  const goToCart = async () => {
+    console.log('[HomeScreen][goToCart] STARTED');
+    
+    try {
+      const itemCount = getCurrentCartItemCount();
+      console.log(`[HomeScreen][goToCart] Current cart has ${itemCount} items`);
+      
+      if (itemCount > 0) {
+        console.log('[HomeScreen][goToCart] Adding items to plan before navigating');
+        const success = await addCartToSelection();
+        
+        if (!success) {
+          console.error('[HomeScreen][goToCart] Failed to add items to plan');
+          Alert.alert(
+            "Uyarı",
+            "Sepetteki ürünler eklenirken bir sorun oluştu.",
+            [{ text: "Tamam", onPress: () => {} }]
+          );
+        }
+    }
+    
+    // Make sure we're using the correct navigation method
+      console.log('[HomeScreen][goToCart] Navigating to Cart screen');
+      navigation.navigate('Cart');
+      
+    } catch (error) {
+      console.error('[HomeScreen][goToCart] Error:', error);
+      
+      // Even if there's an error, still navigate to cart
+      navigation.navigate('Cart');
     }
   };
 
@@ -723,7 +1300,11 @@ export default function HomeScreen() {
         </View>
 
         {/* AI Question Section */}
-        <TouchableOpacity style={styles.aiQuestionContainer} activeOpacity={1.0}>
+        <TouchableOpacity 
+          style={styles.aiQuestionContainer} 
+          activeOpacity={1.0}
+          onPress={() => setShowAiChatbot(true)}
+        >
           <Image source={aiIcon} style={styles.aiQuestionIcon} />
           <Text style={styles.aiQuestionText}>{t('ai.askQuestion')}</Text>
         </TouchableOpacity>
@@ -736,7 +1317,8 @@ export default function HomeScreen() {
             restaurants={restaurants as any}
             onClose={closeRestaurantSelection}
             onComplete={completeMealSelection}
-            onAddToCart={addItemToCart}
+            onAddToCart={orderType === "weekly" ? addDirectlyToPlan : addItemToCart}
+            onRemoveFromCart={removeItemFromCart}
             onViewRestaurant={viewRestaurantDetails}
             loading={loading}
             selectedDay={selectedDay?.name || ''}
@@ -744,15 +1326,229 @@ export default function HomeScreen() {
             selectedTime={selectedPlan?.time || ''}
             cartItemCount={getCurrentCartItemCount()}
             cartTotal={calculateCartTotal()}
-            goToCart={() => {
-              // First add items to the plan
-              if (getCurrentCartItemCount() > 0) {
-                addCartToSelection();
+            goToCart={goToCart}
+            isWeeklyPlan={orderType === "weekly"}
+            getCurrentItemQuantity={getCurrentItemQuantity}
+            showRestaurantDetail={showRestaurantDetail ? {
+              restaurant: showRestaurantDetail.restaurant,
+              activeTab: showRestaurantDetail.activeTab,
+              onTabChange: handleRestaurantTabChange,
+              onBackToList: handleBackToRestaurantList
+            } : undefined}
+                          onContinue={async () => {
+                console.log('[HomeScreen][onContinue] Continue button pressed');
+                
+                if (loading) return;
+                setLoading(true);
+                
+                try {
+                  const cartItemCount = getCurrentCartItemCount();
+                  if (cartItemCount > 0) {
+                    const success = await addCartToSelection();
+                    if (success) {
+                      console.log('[HomeScreen][onContinue] Items added to plan successfully');
+                      
+                      // Clear the cart and close restaurant selection
+                      setShowRestaurantSelection(false);
+                      setSelectedPlanInfo(null);
+                      
+                      Alert.alert(
+                        "Başarılı",
+                        "Ürünler planınıza eklendi! Daha fazla ürün ekleyebilirsiniz.",
+                        [{ text: "Tamam", onPress: () => {} }]
+                      );
+                    } else {
+                      Alert.alert(
+                        "Uyarı",
+                        "Ürünler eklenirken bir sorun oluştu.",
+                        [{ text: "Tamam", onPress: () => {} }]
+                      );
+                    }
+                  } else {
+                    // No items, just close
+                    setShowRestaurantSelection(false);
+                    setSelectedPlanInfo(null);
+                  }
+                } catch (error) {
+                  console.error('[HomeScreen][onContinue] Error:', error);
+                  Alert.alert(
+                    "Hata",
+                    "İşlem sırasında bir hata oluştu.",
+                    [{ text: "Tamam", onPress: () => {} }]
+                  );
+                } finally {
+                  setLoading(false);
+                }
               }
-              // Then navigate to cart
-              navigation.navigate('Cart');
-            }}
+            }
           />
+        ) : showRestaurantDetail ? (
+          // Restaurant detail view for daily mode
+          <View style={styles.restaurantDetailContainer}>
+            <View style={styles.restaurantDetailHeader}>
+              <TouchableOpacity style={styles.menuButton} onPress={handleBackToRestaurantList}>
+                <Text style={[styles.navArrowText, {color: '#00B2FF'}]}>←</Text>
+              </TouchableOpacity>
+              
+              <View style={[styles.dayHeader, {flexDirection: 'column', alignItems: 'flex-start'}]}>
+                <Text style={[styles.dayTitle, {color: '#333'}]} numberOfLines={1}>
+                  {showRestaurantDetail.restaurant.name || showRestaurantDetail.restaurant.isim}
+                </Text>
+                <Text style={[styles.headerSubtitle, {color: '#00B2FF', marginTop: 5}]} numberOfLines={1}>
+                  {showRestaurantDetail.restaurant.category || showRestaurantDetail.restaurant.kategori}
+                </Text>
+              </View>
+            </View>
+
+            {/* Restoran Tabs */}
+            <View style={styles.restaurantTabs}>
+              <TouchableOpacity 
+                style={[styles.restaurantTab, showRestaurantDetail.activeTab === 'menu' && styles.activeTab]}
+                onPress={() => handleRestaurantTabChange('menu')}
+              >
+                <Text style={[styles.restaurantTabText, showRestaurantDetail.activeTab === 'menu' && styles.activeTabText]}>
+                  Menü
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.restaurantTab, showRestaurantDetail.activeTab === 'reviews' && styles.activeTab]}
+                onPress={() => handleRestaurantTabChange('reviews')}
+              >
+                <Text style={[styles.restaurantTabText, showRestaurantDetail.activeTab === 'reviews' && styles.activeTabText]}>
+                  Yorumlar
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.restaurantTab, showRestaurantDetail.activeTab === 'info' && styles.activeTab]}
+                onPress={() => handleRestaurantTabChange('info')}
+              >
+                <Text style={[styles.restaurantTabText, showRestaurantDetail.activeTab === 'info' && styles.activeTabText]}>
+                  Bilgiler
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Tab Content */}
+            <View style={styles.tabContent}>
+              {showRestaurantDetail.activeTab === 'menu' && (
+                <ScrollView style={styles.menuTabContent}>
+                  {(showRestaurantDetail.restaurant.items || []).length > 0 ? (
+                    (showRestaurantDetail.restaurant.items || []).map((item: any) => (
+                      <View key={item.id} style={styles.menuItem}>
+                        <View style={styles.menuItemLeftSection}>
+                          <Text style={styles.menuItemName}>{item.name || item.isim}</Text>
+                          <Text style={styles.menuItemPrice}>
+                            ₺{(item.price || item.fiyat || 0).toFixed ? (item.price || item.fiyat).toFixed(2) : (item.price || item.fiyat)}
+                          </Text>
+                        </View>
+                        <View style={styles.addToCartRow}>
+                          <View style={styles.quantityControlsContainer}>
+                            <TouchableOpacity 
+                              style={styles.quantityButton}
+                              onPress={() => {
+                                if (orderType === "weekly" && selectedPlanInfo) {
+                                  const { dayIndex, planId } = selectedPlanInfo;
+                                  const selection = weeklyPlan[dayIndex]?.plans
+                                    .find(p => p.id === planId)?.selections
+                                    .find(s => s.id.includes(item.id));
+                                  if (selection) {
+                                    updateSelectionQuantity(planId, selection.id, -1);
+                                  }
+                                } else {
+                                  // For daily mode, find and remove one item from cart
+                                  const cartItem = items.find(cartItem => 
+                                    cartItem.id.includes(item.id) || cartItem.name === (item.name || item.isim)
+                                  );
+                                  if (cartItem) {
+                                    removeItem(cartItem.id);
+                                  }
+                                }
+                              }}
+                            >
+                              <Text style={styles.quantityButtonText}>-</Text>
+                            </TouchableOpacity>
+                            
+                            <View style={styles.quantityTextContainer}>
+                              <Text style={styles.quantityText}>{getCurrentItemQuantity(item.id) || 0}</Text>
+                            </View>
+                            
+                            <TouchableOpacity 
+                              style={styles.quantityButton}
+                              onPress={() => {
+                                if (orderType === "weekly") {
+                                  addDirectlyToPlan(showRestaurantDetail.restaurant.id, item.id);
+                                } else {
+                                  // For daily mode, add to regular cart
+                                  const itemPrice = typeof item.fiyat === 'number' ? item.fiyat : 
+                                    (typeof item.fiyat === 'string' && !isNaN(parseFloat(item.fiyat))) ? parseFloat(item.fiyat) :
+                                    typeof item.price === 'number' ? item.price :
+                                    (typeof item.price === 'string' && !isNaN(parseFloat(item.price))) ? parseFloat(item.price) : 0;
+                                  
+                                  addItem({
+                                    id: `daily-${item.id}-${Date.now()}`,
+                                    name: item.name || item.isim,
+                                    price: itemPrice,
+                                    restaurantId: showRestaurantDetail.restaurant.id,
+                                    restaurantName: showRestaurantDetail.restaurant.name || showRestaurantDetail.restaurant.isim
+                                  });
+                                }
+                              }}
+                            >
+                              <Text style={styles.quantityButtonText}>+</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      </View>
+                    ))
+                  ) : (
+                    <View style={styles.noMenuContainer}>
+                      <Text style={styles.noMenuText}>Bu restoran için menü bilgisi bulunmamaktadır.</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              )}
+
+              {showRestaurantDetail.activeTab === 'reviews' && (
+                <View style={styles.reviewsTab}>
+                  <Text style={styles.tabPlaceholder}>Yorumlar yakında...</Text>
+                </View>
+              )}
+
+              {showRestaurantDetail.activeTab === 'info' && (
+                <View style={styles.infoTab}>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Adres:</Text>
+                    <Text style={styles.infoValue}>
+                      {showRestaurantDetail.restaurant.address || showRestaurantDetail.restaurant.adres || 'Bilgi yok'}
+                    </Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Çalışma Saatleri:</Text>
+                    <Text style={styles.infoValue}>
+                      {showRestaurantDetail.restaurant.calismaSaatleri || showRestaurantDetail.restaurant.calismaSaatleri1 || '12:00 - 22:00'}
+                    </Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Text style={styles.infoLabel}>Puan:</Text>
+                    <Text style={styles.infoValue}>
+                      ★ {showRestaurantDetail.restaurant.rating || showRestaurantDetail.restaurant.puan || '4.5'}
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            {/* Floating Action Button for Daily Mode */}
+            {cartItemsCount > 0 && (
+              <View style={styles.floatingButtonsContainer}>
+                <TouchableOpacity style={styles.cartFloatingButton} onPress={goToCart}>
+                  <Text style={styles.cartBtnLabel}>
+                    Sepete Git ({cartItemsCount}) 
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         ) : (
           <ScrollView 
             style={styles.contentContainer} 
@@ -775,6 +1571,7 @@ export default function HomeScreen() {
                     if (showRestaurantSelection) {
                       closeRestaurantSelection();
                     }
+                    // Weekly plan is now integrated directly in HomeScreen
                   }}
                 >
                   <View style={styles.iconContainer}>
@@ -825,7 +1622,7 @@ export default function HomeScreen() {
 
             {orderType === "weekly" ? (
               // Weekly Plan Content
-              <View>
+              <View style={styles.weeklyPlanContainer}>
                 {/* Days navigation - horizontal indicators */}
                 <View style={styles.dayNavigation}>
                   <TouchableOpacity style={styles.navArrow} onPress={goToPrevDay} disabled={activeDayIndex === 0}>
@@ -849,7 +1646,9 @@ export default function HomeScreen() {
                             (index === activeDayIndex || day.completed) && styles.activeDayNumber
                           ]}>{index + 1}</Text>
                         </View>
-                        <Text style={styles.dayName}>{day.name}</Text>
+                        <Text style={styles.dayName}>
+                          {day.name.substring(0, 3)}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -909,41 +1708,76 @@ export default function HomeScreen() {
                         </View>
                         
                         <View style={styles.selectionsContainer}>
-                          {plan.selections.length > 0 ? (
-                            plan.selections.map(selection => (
-                              <View key={selection.id} style={styles.mealSelection}>
+                          {plan.selections && Array.isArray(plan.selections) && plan.selections.length > 0 ? (
+                            <>
+                              <Text style={styles.selectionTitle}>Seçilen Yemekler:</Text>
+                              {plan.selections.map((selection, index) => {
+                                // Enhanced validation with more logging
+                                if (!selection) {
+                                  console.error(`[HomeScreen] Null selection at index ${index} in plan ${plan.id}`);
+                                  return null;
+                                }
+                                
+                                if (!selection.id) {
+                                  console.error(`[HomeScreen] Selection missing ID at index ${index} in plan ${plan.id}:`, selection);
+                                  return null;
+                                }
+                                
+                                console.log(`[HomeScreen] Rendering selection ${index}: ${selection.itemName} from ${selection.restaurantName}`);
+                                
+                                return (
+                                  <View key={`${selection.id}-${index}-${plan.id}`} style={styles.mealSelection}>
+                                                                          <View style={styles.mealThumbnail}>
                                 <Image 
-                                  source={{ uri: selection.restaurantImage || 'https://via.placeholder.com/100' }}
-                                  style={styles.mealThumbnail}
+                                        source={{ uri: selection.restaurantImage || 'https://via.placeholder.com/40' }} 
+                                        style={styles.mealThumbnailImage} 
                                 />
+                                    </View>
                                 <View style={styles.mealInfo}>
-                                  <Text style={styles.mealName} numberOfLines={1}>{selection.itemName}</Text>
-                                  <Text style={styles.mealRestaurant} numberOfLines={1}>{selection.restaurantName}</Text>
+                                      <Text style={styles.mealName} numberOfLines={1}>
+                                        {selection.itemName || 'Yemek'}
+                                      </Text>
+                                      <Text style={styles.mealRestaurant} numberOfLines={1}>
+                                        {selection.restaurantName || 'Restoran'}
+                                      </Text>
                                 </View>
-                                <Text style={styles.mealPrice}>{selection.price}</Text>
+                                    <View style={styles.quantityAndPrice}>
+                                      <Text style={styles.mealPrice}>
+                                        {typeof selection.price === 'string' ? selection.price : `₺${selection.price || '0.00'}`}
+                                      </Text>
+                                      <View style={styles.quantityControls}>
                                 <TouchableOpacity 
-                                  style={styles.removeMealButton}
-                                  onPress={() => removeSelection(plan.id, selection.id)}
+                                          style={styles.quantityButton}
+                                          onPress={() => updateSelectionQuantity(plan.id, selection.id, -1)}
                                 >
-                                  <Text style={styles.removeMealButtonText}>×</Text>
+                                          <Text style={styles.quantityButtonText}>-</Text>
                                 </TouchableOpacity>
-                              </View>
-                            ))
+                                        <Text style={styles.quantityText}>{selection.quantity || 1}</Text>
+                            <TouchableOpacity 
+                                          style={styles.quantityButton}
+                                          onPress={() => updateSelectionQuantity(plan.id, selection.id, 1)}
+                            >
+                                          <Text style={styles.quantityButtonText}>+</Text>
+                            </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                          
+                            <TouchableOpacity 
+                              style={styles.addMoreButton}
+                              onPress={() => openRestaurantSelection(plan.id)}
+                            >
+                              <Text style={styles.addMoreButtonText}>+ Daha Fazla Yemek Ekle</Text>
+                              </TouchableOpacity>
+                            </>
                           ) : (
                             <TouchableOpacity 
                               style={styles.addMealButton}
                               onPress={() => openRestaurantSelection(plan.id)}
                             >
                               <Text style={styles.addMealButtonText}>+ Yemek Ekle</Text>
-                            </TouchableOpacity>
-                          )}
-                          
-                          {plan.selections.length > 0 && (
-                            <TouchableOpacity 
-                              style={styles.addMoreButton}
-                              onPress={() => openRestaurantSelection(plan.id)}
-                            >
-                              <Text style={styles.addMoreButtonText}>+ Daha Fazla Yemek Ekle</Text>
                             </TouchableOpacity>
                           )}
                         </View>
@@ -999,10 +1833,7 @@ export default function HomeScreen() {
                         key={restaurant.id}
                         style={styles.restaurantItem}
                         activeOpacity={1.0}
-                        onPress={() => navigation.navigate("MenuSelection", { 
-                          orderType, 
-                          restaurantId: restaurant.id 
-                        })}
+                        onPress={() => viewRestaurantDetails(restaurant.id)}
                       >
                         <View style={styles.restaurantImagePlaceholder}>
                           {restaurant.logoUrl ? (
@@ -1023,6 +1854,26 @@ export default function HomeScreen() {
                               {restaurant.adres}
                             </Text>
                           )}
+                          
+                          {/* Rating and Delivery Info */}
+                          <View style={styles.restaurantMetaRow}>
+                            <View style={styles.restaurantRating}>
+                              <Text style={styles.star}>★</Text>
+                              <Text style={styles.ratingText}>
+                                {restaurant.calculatedRating || restaurant.puan || '4.5'}
+                              </Text>
+                              <Text style={styles.ratingCount}>
+                                ({restaurant.reviewCount || '0'})
+                              </Text>
+                            </View>
+                            
+                            <View style={styles.deliveryInfo}>
+                              <Text style={styles.deliveryTime}>
+                                {restaurant.formattedTimeRange || restaurant.teslimatSuresi || '25-40 dk'}
+                              </Text>
+                              <Text style={styles.deliveryFee}>Ücretsiz</Text>
+                            </View>
+                          </View>
                         </View>
                       </TouchableOpacity>
                     ))
@@ -1052,6 +1903,14 @@ export default function HomeScreen() {
         onChangeHours={(hours) => handleTimeChange('hours', hours)}
         onChangeMinutes={(minutes) => handleTimeChange('minutes', minutes)}
         isToday={activeDayIndex === 0}
+      />
+
+      {/* AI Chatbot Modal */}
+      <AiChefBot
+        visible={showAiChatbot}
+        restaurants={restaurants}
+        onClose={() => setShowAiChatbot(false)}
+        onAddToCart={handleAiAddToCart}
       />
     </SafeAreaView>
   );
@@ -1326,6 +2185,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#777',
   },
+  restaurantMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  restaurantRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  star: {
+    color: '#FFD700',
+    fontSize: 14,
+    marginRight: 2,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#333',
+    marginRight: 2,
+  },
+  ratingCount: {
+    fontSize: 12,
+    color: '#777',
+  },
+  deliveryInfo: {
+    alignItems: 'flex-end',
+  },
+  deliveryTime: {
+    fontSize: 12,
+    color: '#00B2FF',
+    fontWeight: '600',
+  },
+  deliveryFee: {
+    fontSize: 11,
+    color: '#4CAF50',
+  },
   bottomSpacing: {
     height: Platform.OS === 'ios' ? 100 : 80,
   },
@@ -1375,7 +2271,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   navArrowText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#00B2FF',
   },
@@ -1536,6 +2432,15 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     marginRight: 10,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  mealThumbnailImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   mealInfo: {
     flex: 1,
@@ -1624,5 +2529,265 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
     textAlign: 'center',
+  },
+  selectionTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 10,
+    marginTop: 5,
+    textAlign: 'left',
+    width: '100%',
+    paddingLeft: 5,
+  },
+  // Restaurant Detail Styles
+  restaurantDetailContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  restaurantDetailHeader: {
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    paddingTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    opacity: 0.9,
+  },
+  restaurantTabs: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+  },
+  restaurantTab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: '#00B2FF',
+    borderBottomWidth: 3,
+  },
+  restaurantTabText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#00B2FF',
+    fontWeight: '600',
+  },
+  tabContent: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  menuTabContent: {
+    flex: 1,
+    padding: 15,
+  },
+  menuItem: {
+    flexDirection: 'column',
+    backgroundColor: 'white',
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  menuItemInfo: {
+    flex: 1,
+  },
+  menuItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  menuItemPrice: {
+    fontSize: 14,
+    color: '#00B2FF',
+    fontWeight: '500',
+  },
+  addItemBtn: {
+    backgroundColor: '#00B2FF',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  addItemBtnText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  noMenuContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  noMenuText: {
+    fontSize: 16,
+    color: '#777',
+    textAlign: 'center',
+  },
+  reviewsTab: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  infoTab: {
+    flex: 1,
+    padding: 20,
+  },
+  infoItem: {
+    marginBottom: 20,
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 5,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#333',
+  },
+  tabPlaceholder: {
+    fontSize: 16,
+    color: '#777',
+    textAlign: 'center',
+  },
+  floatingButtonsContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  cartFloatingButton: {
+    backgroundColor: '#00B2FF',
+    paddingHorizontal: 25,
+    paddingVertical: 15,
+    borderRadius: 25,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  cartBtnLabel: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Quantity control styles
+  quantityAndPrice: {
+    alignItems: 'flex-end',
+  },
+  quantityControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  quantityButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#00B2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 5,
+  },
+  quantityButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  quantityText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  // Menu item layout styles
+  menuItemLeftSection: {
+    flex: 1,
+    marginBottom: 5,
+  },
+  menuItemPriceRow: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  categoryContainer: {
+    marginTop: 4,
+  },
+  quantityControlsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+    justifyContent: 'space-between',
+  },
+  quantityTextContainer: {
+    minWidth: 30,
+    alignItems: 'center',
+  },
+  addToCartRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    width: '100%',
+  },
+  menuItemImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  menuItemImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  menuItemQuantitySection: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyThumbnail: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  weeklyPlanContainer: {
+    flex: 1,
   },
 });

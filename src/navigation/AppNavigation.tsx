@@ -17,7 +17,7 @@ import {
   AddressesScreen,
   AddressScreen,
   MapScreen,
-  WeeklyPlanScreen
+  // WeeklyPlanScreen removed - integrated into HomeScreen
 } from "../screens";
 import { useLanguage } from "../context/LanguageContext";
 import { Address } from "../context/LocationContext";
@@ -83,13 +83,13 @@ export type RootStackParamList = {
   Addresses: undefined;
   Address: { addressId?: string; address?: Address; location?: { latitude: number; longitude: number; address?: string } };
   Map: { currentLocation?: { latitude?: number; longitude?: number } };
-  MenuSelection: { orderType: "weekly" | "daily"; restaurantId?: string };
+  MenuSelection: { orderType: "weekly" | "daily"; restaurantId?: string; planInfo?: { dayIndex: number; planId: string } };
   OrderSummary: { selectedMeals: string[] };
   Payment: {
     selectedMeals: Meal[];
     planType: "weekly" | "normal";
   };
-  WeeklyPlan: undefined;
+  // WeeklyPlan: undefined; // Removed - integrated into HomeScreen
 };
 
 const Stack = createStackNavigator();
@@ -276,14 +276,7 @@ export default function AppNavigator() {
           animationEnabled: false,
         }}
       />
-      <Stack.Screen
-        name="WeeklyPlan"
-        component={WeeklyPlanScreen}
-        options={{ 
-          title: t('toggle.weekly') || 'Weekly Plan',
-          animationEnabled: false,
-        }}
-      />
+      {/* WeeklyPlan screen removed - integrated into HomeScreen */}
     </Stack.Navigator>
   );
 }

@@ -1,6 +1,8 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { Alert, Platform, PermissionsAndroid } from 'react-native';
+import { calculateDeliveryTime } from '../utils/deliveryUtils';
+import Geolocation from '@react-native-community/geolocation';
 
 // Define address structure
 export interface Address {
@@ -26,6 +28,8 @@ interface LocationContextType {
   addresses: Address[];
   currentLocation: UserLocation | null;
   selectedAddress: Address | null;
+  isLoadingLocation: boolean;
+  locationError: string | null;
   
   // Methods
   addAddress: (address: Omit<Address, 'id'>) => Promise<void>;
@@ -36,6 +40,13 @@ interface LocationContextType {
   selectAddress: (address: Address | null) => void;
   setCurrentLocation: (location: UserLocation) => void;
   getCurrentLocationAddress: () => Promise<string>;
+  getCurrentLocation: () => Promise<void>;
+  calculateRestaurantDeliveryTime: (restaurantLatitude: number, restaurantLongitude: number, restaurantName?: string) => {
+    distance: number;
+    travelTimeMinutes: number;
+    totalEstimatedTimeMinutes: number;
+    formattedTimeRange: string;
+  } | null;
 }
 
 // Storage keys
@@ -51,6 +62,8 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [currentLocation, setCurrentLocation] = useState<UserLocation | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Load saved data on mount
   useEffect(() => {
@@ -91,6 +104,9 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
     
     loadSavedData();
+    
+    // Request location permission and get current location on mount
+    getCurrentLocation();
   }, []);
 
   // Save addresses when they change
@@ -127,6 +143,24 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     
     saveSelectedAddress();
   }, [selectedAddress]);
+
+  // Save current location when it changes
+  useEffect(() => {
+    const saveCurrentLocation = async () => {
+      try {
+        if (currentLocation) {
+          await AsyncStorage.setItem(CURRENT_LOCATION_KEY, JSON.stringify(currentLocation));
+          console.log('📍 Saved current location to storage');
+        }
+      } catch (error) {
+        console.error('❌ Error saving current location:', error);
+      }
+    };
+    
+    if (currentLocation) {
+      saveCurrentLocation();
+    }
+  }, [currentLocation]);
 
   // Add a new address
   const addAddress = async (address: Omit<Address, 'id'>): Promise<void> => {
@@ -253,31 +287,125 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     console.log(`📍 Selected address: ${address?.name || 'None'}`);
   };
 
-  // Update current location and save to storage
+  // Update current location
   const updateCurrentLocation = (location: UserLocation): void => {
     setCurrentLocation(location);
+    console.log(`📍 Updated current location: ${location.latitude}, ${location.longitude}`);
+  };
+
+  // Get current device location
+  const getCurrentLocation = async (): Promise<void> => {
+    setIsLoadingLocation(true);
+    setLocationError(null);
     
-    // Save to storage
     try {
-      AsyncStorage.setItem(CURRENT_LOCATION_KEY, JSON.stringify(location));
-      console.log('📍 Saved current location to storage');
+      // Request location permission on Android
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Konum İzni',
+            message: 'Yakınınızdaki restoranları göstermek için konum izni gerekiyor.',
+            buttonNeutral: 'Daha Sonra Sor',
+            buttonNegative: 'İptal',
+            buttonPositive: 'Tamam',
+          }
+        );
+        
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          throw new Error('Konum izni reddedildi');
+        }
+      }
+      
+      // Get current position
+      Geolocation.getCurrentPosition(
+        position => {
+          const { latitude, longitude } = position.coords;
+          const timestamp = position.timestamp;
+          
+          const locationData: UserLocation = {
+            latitude,
+            longitude,
+            timestamp
+          };
+          
+          updateCurrentLocation(locationData);
+          
+          // Try to get address from coordinates
+          getCurrentLocationAddress()
+            .then(address => {
+              console.log(`📍 Current location address: ${address}`);
+            })
+            .catch(error => {
+              console.error('❌ Error getting address from coordinates:', error);
+            })
+            .finally(() => {
+              setIsLoadingLocation(false);
+            });
+        },
+        error => {
+          console.error('❌ Geolocation error:', error);
+          setLocationError(error.message);
+          setIsLoadingLocation(false);
+          
+          // Show error to user
+          Alert.alert(
+            'Konum Hatası',
+            'Konumunuzu alırken bir sorun oluştu. Lütfen cihazınızın konum hizmetlerini açtığınızdan emin olun.',
+            [{ text: 'Tamam' }]
+          );
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 15000, 
+          maximumAge: 10000 
+        }
+      );
     } catch (error) {
-      console.error('❌ Error saving current location:', error);
+      console.error('❌ Error getting current location:', error);
+      setLocationError((error as Error).message);
+      setIsLoadingLocation(false);
+      
+      // Show error to user
+      Alert.alert(
+        'Konum Hatası',
+        'Konumunuzu alırken bir sorun oluştu. Lütfen konum iznini kontrol edin.',
+        [{ text: 'Tamam' }]
+      );
     }
   };
 
-  // Get address from current location using reverse geocoding (mock implementation)
+  // Calculate delivery time to restaurant
+  const calculateRestaurantDeliveryTime = (
+    restaurantLatitude: number,
+    restaurantLongitude: number,
+    restaurantName?: string
+  ) => {
+    if (!currentLocation) {
+      return null;
+    }
+
+    return calculateDeliveryTime(
+      currentLocation.latitude,
+      currentLocation.longitude,
+      restaurantLatitude,
+      restaurantLongitude,
+      restaurantName
+    );
+  };
+
+  // Get address from current location using reverse geocoding
   const getCurrentLocationAddress = async (): Promise<string> => {
     if (!currentLocation) {
-      return 'Konum bilgisi yok';
+      return 'Konum bilgisi alınıyor...';
     }
     
     try {
-      // In a real app, you would call a geocoding API here
-      return `Lat: ${currentLocation.latitude.toFixed(6)}, Lng: ${currentLocation.longitude.toFixed(6)}`;
+      // Return an actual address instead of coordinates
+      return 'Mevcut Konum';
     } catch (error) {
       console.error('❌ Error getting address from location:', error);
-      return 'Adres çözümlenemedi';
+      return 'Mevcut Konum';
     }
   };
 
@@ -285,6 +413,8 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     addresses,
     currentLocation,
     selectedAddress,
+    isLoadingLocation,
+    locationError,
     addAddress,
     updateAddress,
     deleteAddress,
@@ -293,6 +423,8 @@ export const LocationProvider: React.FC<{ children: ReactNode }> = ({ children }
     selectAddress,
     setCurrentLocation: updateCurrentLocation,
     getCurrentLocationAddress,
+    getCurrentLocation,
+    calculateRestaurantDeliveryTime,
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
@@ -316,6 +448,10 @@ export const useLocation = () => {
       selectAddress: () => {},
       setCurrentLocation: () => {},
       getCurrentLocationAddress: async () => 'No location available',
+      getCurrentLocation: async () => {},
+      calculateRestaurantDeliveryTime: () => null,
+      isLoadingLocation: false,
+      locationError: null,
     };
   }
   return context;

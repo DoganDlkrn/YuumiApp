@@ -49,6 +49,14 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'no.phone': 'Telefon yok',
     'logout.title': 'Çıkış Yap',
     'logout.confirm': 'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+    'success': 'Başarılı',
+    'order.received': 'Siparişiniz alınmıştır.',
+    'attention': 'Dikkat',
+    'confirm.complete.order': 'Bu siparişi tamamlamak istediğinize emin misiniz?',
+    'confirm': 'Onayla',
+    'complete': 'Tamamla',
+    'ok': 'Tamam',
+    'error': 'Hata',
 
     // Auth screens
     'login.title': 'Giriş Yap',
@@ -138,7 +146,11 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'orders.activeOrders': 'Aktif Siparişler',
     'orders.summary': 'Sipariş Özeti',
     'orders.delivered': 'Teslim edildi',
+    'orders.pending': 'Beklemede',
+    'orders.preparing': 'Hazırlanıyor',
+    'orders.onTheWay': 'Yolda',
     'orders.reorder': 'Tekrar Sipariş Ver',
+    'orders.rate': 'Değerlendir',
     'orders.noOrdersYet': 'Henüz siparişiniz bulunmamaktadır.',
     'orders.noActiveOrders': 'Şu anda aktif siparişiniz bulunmamaktadır.',
     'orders.orderNow': 'Hemen Sipariş Ver',
@@ -164,6 +176,15 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'cart.remove': 'Kaldır',
     'cart.added': 'Sepete eklendi',
     'cart.items': 'ürün',
+    'cart.goto': 'Sepete Git',
+    'cart.added.to': 'sepete eklendi',
+    
+    // Time and planning
+    'time.select': 'Saat Seç',
+    'delivery.time.select': 'Teslimat saati seçin',
+    'hour': 'Saat',
+    'minute': 'Dakika',
+    'planning.for': 'için planlama',
   },
 
   en: {
@@ -176,6 +197,14 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'no.phone': 'No phone',
     'logout.title': 'Logout',
     'logout.confirm': 'Are you sure you want to log out of your account?',
+    'success': 'Success',
+    'order.received': 'Your order has been received.',
+    'attention': 'Attention',
+    'confirm.complete.order': 'Are you sure you want to complete this order?',
+    'confirm': 'Confirm',
+    'complete': 'Complete',
+    'ok': 'OK',
+    'error': 'Error',
 
     // Auth screens
     'login.title': 'Login',
@@ -222,30 +251,30 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     // Bottom tabs
     'tabs.food': 'Food',
     'tabs.search': 'Search',
-    'tabs.orders': 'My Orders',
+    'tabs.orders': 'Orders',
     'tabs.profile': 'Profile',
-    
+
     // Menu screens
-    'menu.selection': 'Food Selection',
+    'menu.selection': 'Menu Selection',
     'order.summary': 'Order Summary',
     'payment.screen': 'Payment',
     
     // Home Screen
     'location.select': 'Select Location',
-    'location.add': 'Select Location',
+    'location.add': 'Add Location',
     'search.placeholder': 'Search for restaurants or food...',
     'ai.askQuestion': 'Ask AI a question',
     'toggle.weekly': 'Weekly',
     'toggle.daily': 'Daily',
     'home.categories': 'Categories',
     'home.popularRestaurants': 'Popular Restaurants',
-    'restaurant.tastyFood': 'Delicious food',
+    'restaurant.tastyFood': 'Tasty food',
     'home.popularCategories': 'Popular Categories',
     
     // Categories
     'category.pizza': 'Pizza',
     'category.burger': 'Burger',
-    'category.kebap': 'Kebab',
+    'category.kebap': 'Kebap',
     'category.dessert': 'Dessert',
     'category.drinks': 'Drinks',
     'category.breakfast': 'Breakfast',
@@ -255,8 +284,8 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'search.popularCategories': 'Popular Categories',
     'search.results': 'Search Results',
     'search.noResults': 'No results found',
-    'search.notFound': 'We couldn\'t find what you\'re looking for',
-    'search.noRecentSearches': 'You haven\'t made any searches yet',
+    'search.notFound': 'We couldn\'t find the product you were looking for',
+    'search.noRecentSearches': 'No recent searches yet',
     'search.category': 'Category',
     'search.restaurant': 'Restaurant',
     
@@ -265,23 +294,27 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'orders.activeOrders': 'Active Orders',
     'orders.summary': 'Order Summary',
     'orders.delivered': 'Delivered',
+    'orders.pending': 'Pending',
+    'orders.preparing': 'Preparing',
+    'orders.onTheWay': 'On the way',
     'orders.reorder': 'Reorder',
-    'orders.noOrdersYet': 'You have no orders yet.',
-    'orders.noActiveOrders': 'You have no active orders at the moment.',
+    'orders.rate': 'Rate',
+    'orders.noOrdersYet': 'You don\'t have any orders yet.',
+    'orders.noActiveOrders': 'You don\'t have any active orders at the moment.',
     'orders.orderNow': 'Order Now',
 
     // New translations for English
-    'profile.notificationSettings': 'My Communication Preferences',
+    'profile.notificationSettings': 'Communication Preferences',
     'notifications.settings': 'Communication Preferences',
     'notifications.email': 'Email',
-    'notifications.emailDescription': 'I want to receive emails about campaigns.',
+    'notifications.emailDescription': 'I want to receive emails about promotions.',
     'notifications.push': 'Push Notifications',
-    'notifications.pushDescription': 'I want to receive push notifications about campaigns.',
+    'notifications.pushDescription': 'I want to receive push notifications about promotions.',
     'notifications.sms': 'SMS',
-    'notifications.smsDescription': 'I want to receive SMS messages about campaigns.',
+    'notifications.smsDescription': 'I want to receive SMS about promotions.',
     'notifications.phone': 'Phone',
-    'notifications.phoneDescription': 'I want to be contacted via my mobile phone about campaigns.',
-    'notifications.disclaimer': '*When you turn off communication preferences related to campaigns, you will continue to receive emails/notifications about your orders and membership settings.',
+    'notifications.phoneDescription': 'I want to be called on my mobile phone about promotions.',
+    'notifications.disclaimer': '*When you turn off communication preferences for promotions, you will still receive emails / notifications about your orders and membership settings.',
 
     // Cart related
     'cart.title': 'My Cart',
@@ -290,7 +323,19 @@ const translations: Record<LanguageCode, Record<string, string>> = {
     'cart.checkout': 'Checkout',
     'cart.remove': 'Remove',
     'cart.added': 'Added to cart',
+    'cart.added.to': 'added to cart',
     'cart.items': 'items',
+    'cart.goto': 'Go to Cart',
+    'completeOrder': 'Complete Order',
+    'subtotal': 'Subtotal',
+    'unknownRestaurant': 'Unknown Restaurant',
+    
+    // Time and planning
+    'time.select': 'Select Time',
+    'delivery.time.select': 'Select delivery time',
+    'hour': 'Hour',
+    'minute': 'Minute',
+    'planning.for': 'planning for',
   },
 };
 

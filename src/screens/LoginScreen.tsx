@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import { useNavigationLoading } from '../navigation/NavigationContainer';
 import YLogo from '../components/YLogo';
 import { useTheme } from '../context/ThemeContext';
 import PasswordToggle from '../components/PasswordToggle';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Google icon
 const googleIcon: ImageSourcePropType = require('../assets/images/google.png');
@@ -45,11 +46,31 @@ const LoginScreen = () => {
   const [lastName, setLastName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   // Tutarlı placeholder rengi
   const placeholderColor = theme === 'dark' ? '#888' : '#999';
 
   const styles = theme === 'dark' ? darkStyles : lightStyles;
+
+  // Load saved email on component mount
+  useEffect(() => {
+    const loadSavedCredentials = async () => {
+      try {
+        const savedEmail = await AsyncStorage.getItem('@yuumi_saved_email');
+        const wasRemembered = await AsyncStorage.getItem('@yuumi_remember_me');
+        
+        if (savedEmail && wasRemembered === 'true') {
+          setEmail(savedEmail);
+          setRememberMe(true);
+        }
+      } catch (error) {
+        console.error('Error loading saved credentials:', error);
+      }
+    };
+
+    loadSavedCredentials();
+  }, []);
 
   const handleGoogleLogin = async () => {
     try {
@@ -69,6 +90,16 @@ const LoginScreen = () => {
 
     try {
       await login(email, password);
+      
+      // Save or remove credentials based on "Remember Me" setting
+      if (rememberMe) {
+        await AsyncStorage.setItem('@yuumi_saved_email', email);
+        await AsyncStorage.setItem('@yuumi_remember_me', 'true');
+      } else {
+        await AsyncStorage.removeItem('@yuumi_saved_email');
+        await AsyncStorage.removeItem('@yuumi_remember_me');
+      }
+      
       // Başarılı giriş sonrası ana sayfaya yönlendir
       navigation.navigate('Home' as never);
     } catch (error) {
@@ -289,9 +320,21 @@ const LoginScreen = () => {
             )}
             
             {isLoginView && (
-              <TouchableOpacity style={styles.forgotPasswordContainer}>
-                <Text style={styles.forgotPasswordText}>Şifremi unuttum</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity style={styles.forgotPasswordContainer}>
+                  <Text style={styles.forgotPasswordText}>Şifremi unuttum</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.rememberMeContainer}
+                  onPress={() => setRememberMe(!rememberMe)}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    {rememberMe && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                  <Text style={styles.rememberMeText}>Beni hatırla</Text>
+                </TouchableOpacity>
+              </>
             )}
             
             <TouchableOpacity 
@@ -455,12 +498,42 @@ const lightStyles = StyleSheet.create({
   },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   forgotPasswordText: {
     color: '#00B2FF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#ddd',
+    borderRadius: 3,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  checkboxChecked: {
+    backgroundColor: '#00B2FF',
+    borderColor: '#00B2FF',
+  },
+  checkmark: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  rememberMeText: {
+    fontSize: 14,
+    color: '#333',
   },
   primaryButton: {
     backgroundColor: '#00B2FF',
@@ -658,12 +731,42 @@ const darkStyles = StyleSheet.create({
   },
   forgotPasswordContainer: {
     alignSelf: 'flex-end',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   forgotPasswordText: {
     color: '#64b5f6',
     fontSize: 14,
     fontWeight: '500',
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 2,
+    borderColor: '#444',
+    borderRadius: 3,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+  },
+  checkboxChecked: {
+    backgroundColor: '#1e88e5',
+    borderColor: '#1e88e5',
+  },
+  checkmark: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  rememberMeText: {
+    fontSize: 14,
+    color: '#eee',
   },
   primaryButton: {
     backgroundColor: '#1e88e5',

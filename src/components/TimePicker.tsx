@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
-  Dimensions
+  Dimensions,
 } from 'react-native';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -36,105 +36,123 @@ const TimePicker: React.FC<TimePickerProps> = ({
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
 
-  // Generate time picker options
-  const generateHourOptions = () => {
-    const options = [];
+  // Generate hours array (0-23)
+  const getValidHours = () => {
+    const hoursArray = [];
     for (let i = 0; i < 24; i++) {
-      // If it's today, only show hours from current hour onwards
       if (isToday && i < currentHour) continue;
-      
-      options.push(
-        <TouchableOpacity
-          key={`hour-${i}`}
-          style={[
-            styles.timeOption,
-            hours === i && styles.selectedTimeOption
-          ]}
-          onPress={() => onChangeHours(i)}
-        >
-          <Text style={[
-            styles.timeOptionText,
-            hours === i && styles.selectedTimeOptionText
-          ]}>
-            {i.toString().padStart(2, '0')}
-          </Text>
-        </TouchableOpacity>
-      );
+      hoursArray.push(i);
     }
-    return options;
+    return hoursArray;
   };
 
-  const generateMinuteOptions = () => {
-    const options = [];
+  // Generate minutes array (0-59, increment by 5)
+  const getValidMinutes = () => {
+    const mins = [];
     for (let i = 0; i < 60; i += 5) {
-      // If it's today and current hour, only show minutes from current minute onwards
       if (isToday && hours === currentHour && i < currentMinute) continue;
-      
-      options.push(
-        <TouchableOpacity
-          key={`minute-${i}`}
-          style={[
-            styles.timeOption,
-            minutes === i && styles.selectedTimeOption
-          ]}
-          onPress={() => onChangeMinutes(i)}
-        >
-          <Text style={[
-            styles.timeOptionText,
-            minutes === i && styles.selectedTimeOptionText
-          ]}>
-            {i.toString().padStart(2, '0')}
-          </Text>
-        </TouchableOpacity>
-      );
+      mins.push(i);
     }
-    return options;
+    return mins;
   };
+
+  const validHours = getValidHours();
+  const validMinutes = getValidMinutes();
 
   const isTimeValid = () => {
     if (!isToday) return true;
-    
     if (hours > currentHour) return true;
     if (hours === currentHour && minutes >= currentMinute) return true;
-    
     return false;
+  };
+
+  const renderHourOptions = () => {
+    return validHours.map((hour) => (
+      <TouchableOpacity
+        key={hour}
+        style={[
+          styles.timeOption,
+          hours === hour && styles.selectedTimeOption
+        ]}
+        onPress={() => onChangeHours(hour)}
+      >
+        <Text style={[
+          styles.timeOptionText,
+          hours === hour && styles.selectedTimeOptionText
+        ]}>
+          {hour.toString().padStart(2, '0')}
+        </Text>
+      </TouchableOpacity>
+    ));
+  };
+
+  const renderMinuteOptions = () => {
+    return validMinutes.map((minute) => (
+      <TouchableOpacity
+        key={minute}
+        style={[
+          styles.timeOption,
+          minutes === minute && styles.selectedTimeOption
+        ]}
+        onPress={() => onChangeMinutes(minute)}
+      >
+        <Text style={[
+          styles.timeOptionText,
+          minutes === minute && styles.selectedTimeOptionText
+        ]}>
+          {minute.toString().padStart(2, '0')}
+        </Text>
+      </TouchableOpacity>
+    ));
   };
 
   return (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="none"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t('time.select')}</Text>
-            <Text style={styles.modalSubtitle}>{t('delivery.time.select')}</Text>
+            <Text style={styles.modalTitle}>Saat Seçin</Text>
+            <Text style={styles.modalSubtitle}>
+              {isToday ? 'Bugün için teslimat saati' : 'Teslimat saati'}
+            </Text>
           </View>
           
-          <View style={styles.timePickerContent}>
-            <View style={styles.timePickerColumns}>
-              <View style={styles.timePickerColumn}>
-                <Text style={styles.timePickerLabel}>{t('hour')}</Text>
+          <View style={styles.timePickerContainer}>
+            <View style={styles.timeDisplayContainer}>
+              <Text style={styles.timeDisplay}>
+                {hours.toString().padStart(2, '0')}:{minutes.toString().padStart(2, '0')}
+              </Text>
+            </View>
+            
+            <View style={styles.pickersRow}>
+              <View style={styles.pickerSection}>
+                <Text style={styles.pickerLabel}>Saat</Text>
                 <ScrollView 
+                  style={styles.optionsContainer}
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.timeOptionsContainer}
+                  contentContainerStyle={styles.optionsContent}
                 >
-                  {generateHourOptions()}
+                  {renderHourOptions()}
                 </ScrollView>
               </View>
               
-              <Text style={styles.timePickerSeparator}>:</Text>
+              <View style={styles.pickerDivider}>
+                <Text style={styles.pickerDividerText}>:</Text>
+              </View>
               
-              <View style={styles.timePickerColumn}>
-                <Text style={styles.timePickerLabel}>{t('minute')}</Text>
+              <View style={styles.pickerSection}>
+                <Text style={styles.pickerLabel}>Dakika</Text>
                 <ScrollView 
+                  style={styles.optionsContainer}
                   showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.timeOptionsContainer}
+                  contentContainerStyle={styles.optionsContent}
                 >
-                  {generateMinuteOptions()}
+                  {renderMinuteOptions()}
                 </ScrollView>
               </View>
             </View>
@@ -145,7 +163,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
               style={styles.cancelButton}
               onPress={onClose}
             >
-              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+              <Text style={styles.cancelButtonText}>İptal</Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -156,7 +174,7 @@ const TimePicker: React.FC<TimePickerProps> = ({
               onPress={onConfirm}
               disabled={!isTimeValid()}
             >
-              <Text style={styles.confirmButtonText}>{t('confirm')}</Text>
+              <Text style={styles.confirmButtonText}>Onayla</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -177,95 +195,131 @@ const styles = StyleSheet.create({
   modalContent: {
     width: width * 0.85,
     backgroundColor: '#fff',
-    borderRadius: 15,
+    borderRadius: 20,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalHeader: {
-    padding: 15,
+    padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
     alignItems: 'center',
+    backgroundColor: '#fafafa',
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '600',
     marginBottom: 5,
+    color: '#333',
   },
   modalSubtitle: {
     fontSize: 14,
     color: '#666',
   },
-  timePickerContent: {
-    padding: 15,
+  timePickerContainer: {
+    padding: 20,
   },
-  timePickerColumns: {
+  timeDisplayContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingVertical: 15,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 15,
+  },
+  timeDisplay: {
+    fontSize: 32,
+    fontWeight: '300',
+    color: '#00B2FF',
+  },
+  pickersRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  timePickerColumn: {
+  pickerSection: {
     alignItems: 'center',
-    width: 70,
+    flex: 1,
   },
-  timePickerLabel: {
-    fontSize: 14,
+  pickerLabel: {
+    fontSize: 16,
     color: '#666',
     marginBottom: 10,
+    fontWeight: '500',
   },
-  timeOptionsContainer: {
-    paddingVertical: 10,
+  pickerDivider: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginHorizontal: 15,
+    paddingTop: 35,
+  },
+  pickerDividerText: {
+    fontSize: 28,
+    fontWeight: '300',
+    color: '#ccc',
+  },
+  optionsContainer: {
+    maxHeight: 200,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  optionsContent: {
+    padding: 5,
   },
   timeOption: {
-    padding: 10,
-    width: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
     marginVertical: 2,
-    borderRadius: 25,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
   },
   selectedTimeOption: {
     backgroundColor: '#00B2FF',
   },
   timeOptionText: {
     fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    fontWeight: '500',
   },
   selectedTimeOptionText: {
     color: '#fff',
-    fontWeight: 'bold',
-  },
-  timePickerSeparator: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginHorizontal: 10,
+    fontWeight: '600',
   },
   modalActions: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: '#f0f0f0',
   },
   cancelButton: {
     flex: 1,
-    padding: 15,
+    padding: 18,
     alignItems: 'center',
     borderRightWidth: 0.5,
-    borderRightColor: '#eee',
+    borderRightColor: '#f0f0f0',
   },
   cancelButtonText: {
     color: '#666',
     fontSize: 16,
+    fontWeight: '500',
   },
   confirmButton: {
     flex: 1,
-    padding: 15,
+    padding: 18,
     alignItems: 'center',
+    backgroundColor: '#f8f9fa',
     borderLeftWidth: 0.5,
-    borderLeftColor: '#eee',
-    backgroundColor: '#f9f9f9',
+    borderLeftColor: '#f0f0f0',
   },
   confirmButtonText: {
     color: '#00B2FF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   disabledButton: {
     opacity: 0.5,

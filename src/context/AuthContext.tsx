@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { auth, db } from '../config/firebase';
 import { 
@@ -151,44 +152,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Firestore'da kullanıcı profili mevcut değilse oluştur
         await ensureUserProfile(user);
       } else {
-        // Mobil - Google ile Firebase
+        // Mobil - Google ile Firebase (v13+ API)
         try {
+          // Google Play Services kontrolü
+          await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+          
           // Google Sign-In akışını başlat
-          await GoogleSignin.hasPlayServices();
+          const response = await GoogleSignin.signIn();
+          console.log('Google Sign-In response:', response);
           
-          // userInfo'yu al ve içindeki tokenları doğru şekilde eriş
-          const userInfo = await GoogleSignin.signIn();
-          console.log('Google Sign-In successful, userInfo:', userInfo);
-          
-          // Firebase kimliği için Google kimlik bilgilerini kullan
-          if (userInfo && 'idToken' in userInfo) {
-            const idToken = (userInfo as any).idToken;
-            const credential = GoogleAuthProvider.credential(idToken);
+          // v13+ versiyonunda response yapısı değişti
+          if (response.type === 'success') {
+            const { data } = response;
+            
+            // Firebase kimliği için Google kimlik bilgilerini kullan
+            const credential = GoogleAuthProvider.credential(data.idToken);
             const userCredential = await signInWithCredential(auth, credential);
+            
+            console.log('Firebase authentication successful:', userCredential.user.email);
             
             // Kullanıcı profili oluştur veya kontrol et
             await ensureUserProfile(userCredential.user);
           } else {
-            console.error('Google Sign-In failed: No ID token received', userInfo);
-            throw new Error('Google Sign-In failed: No ID token received');
+            throw new Error(`Google Sign-In failed: ${response.type}`);
           }
         } catch (error: any) {
           console.error('Google Sign-In process error:', error);
+          
           if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-            // Kullanıcı girişi iptal etti
-            console.log('İptal edildi');
+            console.log('Kullanıcı girişi iptal etti');
+            throw new Error('Giriş iptal edildi');
           } else if (error.code === statusCodes.IN_PROGRESS) {
-            // İşlem devam ediyor
-            console.log('İşlem devam ediyor');
+            console.log('Giriş işlemi devam ediyor...');
+            throw new Error('Giriş işlemi devam ediyor');
           } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-            // Play servisleri kullanılamıyor
-            Alert.alert('Hata', 'Google Play Servisleri kullanılamıyor.');
+            Alert.alert('Hata', 'Google Play Servisleri kullanılamıyor. Lütfen Google Play Servisleri güncelleyin.');
+            throw error;
           } else {
-            // Diğer hatalar
             console.error('Google giriş hatası:', error);
-            Alert.alert('Google Giriş Hatası', error.message);
+            Alert.alert('Google Giriş Hatası', error.message || 'Bilinmeyen bir hata oluştu');
+            throw error;
           }
-          throw error;
         }
       }
       
@@ -196,7 +200,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error: any) {
       setLoading(false);
       console.error('Google giriş hatası:', error);
-      Alert.alert('Google Giriş Hatası', error.message);
+      if (!error.message?.includes('iptal') && !error.message?.includes('devam')) {
+        Alert.alert('Google Giriş Hatası', error.message || 'Bilinmeyen bir hata oluştu');
+      }
       throw error;
     }
   };
